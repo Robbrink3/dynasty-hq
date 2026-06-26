@@ -124,20 +124,10 @@ select option{background:var(--surface)}
 </head>
 <body>
 
-<!-- League picker overlay (shown only if multiple leagues found) -->
-<div id="lg-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:999;align-items:center;justify-content:center">
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;width:88%;max-width:340px">
-    <h3 style="margin-bottom:12px">Select League</h3>
-    <select id="lg-select" style="margin-bottom:12px"></select>
-    <button onclick="selectLeague()">Load League</button>
-  </div>
-</div>
 
 <div id="app" style="display:flex;flex-direction:column;height:100dvh">
   <div id="header">
     <h1>🏈 Dynasty HQ</h1>
-    <span class="league-name" id="league-label" style="color:var(--muted);font-size:11px"></span>
-    <span id="sync-status" style="font-size:11px;color:var(--muted)"></span>
   </div>
   <div id="content">
     <!-- ROSTER -->
@@ -148,6 +138,8 @@ select option{background:var(--surface)}
     <!-- CONTRACTS -->
     <div id="panel-contracts" class="panel">
       <div id="deadline-wrap"></div>
+      <button onclick="recommendContracts()" style="margin-bottom:12px">🎯 Recommend Slot Assignments</button>
+      <div id="contracts-recommend" style="display:none;margin-bottom:12px"></div>
       <div id="alloc-summary" style="margin-bottom:12px"></div>
       <div id="contracts-list"></div>
       <div class="mt12">
@@ -158,10 +150,14 @@ select option{background:var(--surface)}
     </div>
     <!-- WEEK -->
     <div id="panel-week" class="panel">
+      <button onclick="recommendWeek()" style="margin-bottom:12px">🎯 Get This Week's Recommendations</button>
+      <div id="week-recommend" style="display:none;margin-bottom:12px"></div>
       <div id="week-content"><div class="empty"><div class="spinner"></div><br>Loading week data...</div></div>
     </div>
     <!-- DRAFT -->
     <div id="panel-draft" class="panel">
+      <button onclick="recommendDraft()" style="margin-bottom:12px">🎯 Recommend Draft Strategy</button>
+      <div id="draft-recommend" style="display:none;margin-bottom:12px"></div>
       <div id="draft-content"><div class="empty"><div class="spinner"></div><br>Loading draft data...</div></div>
     </div>
     <!-- TRADE -->
@@ -187,6 +183,8 @@ select option{background:var(--surface)}
             </div>
           </div>
           <div id="trade-verdict"></div>
+          <button onclick="recommendTrade()" style="margin-top:10px">🎯 Recommend a Trade</button>
+          <div id="trade-recommend" style="display:none;margin-top:10px"></div>
           <button class="secondary mt8" onclick="clearTrade()">Clear Trade</button>
         </div>
       </div>
@@ -230,8 +228,6 @@ select option{background:var(--surface)}
 <script>
 'use strict';
 // ── CONSTANTS ──────────────────────────────────────────────────────────────
-const OWNER_USERNAME='My Ball Zach Ertz';
-const SLEEPER='https://api.sleeper.app/v1';
 const POSITIONS=['QB','RB','WR','TE','K','DST'];
 
 const SEED={
@@ -317,8 +313,7 @@ function loadLD(){try{const v=localStorage.getItem('dhq_ld');return v?JSON.parse
 function saveLD(d){try{localStorage.setItem('dhq_ld',JSON.stringify(d));}catch{}}
 
 // ── APP STATE ──────────────────────────────────────────────────────────────
-let G={user:null,leagues:[],league:null,rosters:[],myRoster:null,picks:[],players:{},
-       season:'',userId:'',ld:loadLD()};
+let G={ld:loadLD(),players:{}};
 let W={state:null,proj:{},trending:[],loaded:false,loading:false};
 let tradeGive=[],tradeGet=[];
 
@@ -326,112 +321,6 @@ let tradeGive=[],tradeGet=[];
 (function init(){
   if(!localStorage.getItem('dhq_ld'))saveLD(SEED);
   G.ld=loadLD();
-  const yr=new Date().getFullYear();
-  const m=new Date().getMonth();
-  G.season=load('dhq_season',String(m<8?yr-1:yr));
-  // Show app immediately with contract data (offline-capable)
-  renderContracts();
-  setSyncStatus('⏳ Syncing...');
-  const savedLg=load('dhq_saved_lg','');
-  if(savedLg){autoRestoreLeague(savedLg,G.season);}
-  else{doLoad();}
-})();
-
-function setSyncStatus(t){
-  const el=document.getElementById('sync-status');
-  if(el)el.textContent=t;
-}
-
-async function autoRestoreLeague(lgId,season){
-  try{
-    const user=await api('/user/'+encUser(OWNER_USERNAME));
-    G.user=user; G.userId=user.user_id;
-    const leagues=await api('/user/'+user.user_id+'/leagues/nfl/'+season);
-    G.leagues=leagues||[];
-    const lg=G.leagues.find(l=>l.league_id===lgId);
-    if(lg){await loadLeague(lg);}
-    else if(G.leagues.length){showLeaguePicker();}
-    else{setSyncStatus('No leagues found');}
-  }catch(e){setSyncStatus('⚠️ Offline');console.error(e);}
-}
-
-async function doLoad(){
-  try{
-    const user=await api('/user/'+encUser(OWNER_USERNAME));
-    if(!user||!user.user_id)throw new Error('Not found');
-    G.user=user; G.userId=user.user_id;
-    const leagues=await api('/user/'+user.user_id+'/leagues/nfl/'+G.season);
-    G.leagues=leagues||[];
-    if(!G.leagues.length){setSyncStatus('No leagues found');return;}
-    if(G.leagues.length===1){await loadLeague(G.leagues[0]);}
-    else{showLeaguePicker();}
-  }catch(e){
-    setSyncStatus('⚠️ Offline');
-    console.error('Load error:',e);
-    // Still show roster tab with contract data
-    document.getElementById('roster-list').innerHTML=`<div class="card"><div class="card-body" style="text-align:center;color:var(--muted)">
-      <div style="font-size:13px">Could not reach Sleeper API.<br>Contract data is still available.</div>
-      <button class="secondary" style="margin-top:10px;width:auto;padding:8px 16px" onclick="doLoad()">🔄 Retry</button>
-    </div></div>`;
-  }
-}
-
-function showLeaguePicker(){
-  const sel=document.getElementById('lg-select');
-  sel.innerHTML='<option value="">-- Select a league --</option>';
-  G.leagues.forEach(l=>{
-    const o=document.createElement('option');
-    o.value=l.league_id; o.textContent=l.name;
-    sel.appendChild(o);
-  });
-  const ov=document.getElementById('lg-overlay');
-  ov.style.display='flex';
-}
-
-async function selectLeague(){
-  const id=document.getElementById('lg-select').value;
-  if(!id)return;
-  document.getElementById('lg-overlay').style.display='none';
-  const lg=G.leagues.find(l=>l.league_id===id);
-  if(lg)await loadLeague(lg);
-}
-
-async function loadLeague(lg){
-  setLoginStatus('Loading '+lg.name+'...');
-  G.league=lg;
-  save('dhq_saved_lg',lg.league_id);
-  try{
-    const [rosters,picks]=await Promise.all([
-      api('/league/'+lg.league_id+'/rosters'),
-      api('/league/'+lg.league_id+'/traded_picks'),
-    ]);
-    G.rosters=rosters||[];
-    G.picks=picks||[];
-    // find my roster
-    G.myRoster=G.rosters.find(r=>r.owner_id===G.userId)||G.rosters[0];
-    // load players (cached)
-    await loadPlayers();
-    showApp(lg.name);
-  }catch(e){setSyncStatus('⚠️ Error');console.error(e);}
-}
-
-async function loadPlayers(){
-  const cached=load('dhq_players_ts','');
-  const age=Date.now()-Number(cached||0);
-  if(cached && age<86400000){
-    try{G.players=JSON.parse(localStorage.getItem('dhq_players')||'{}');return;}catch{}
-  }
-  try{
-    const p=await api('/players/nfl');
-    G.players=p||{};
-    localStorage.setItem('dhq_players',JSON.stringify(p));
-    save('dhq_players_ts',String(Date.now()));
-  }catch{}
-}
-
-function showApp(lgName){
-  document.getElementById('league-label').textContent=lgName;
-  setSyncStatus('✓');
   renderRoster();
   renderContracts();
   // restore AI key
@@ -440,20 +329,19 @@ function showApp(lgName){
   const key=load('dhq_key','');
   if(key)document.getElementById('ai-key').value=key;
   onProviderChange();
-  // welcome message (only first time)
   if(!load('dhq_welcomed','')){
     appendMsg('assistant','Dynasty HQ ready! Ask me about sit/start, free agents, rookies, or trade values.');
     save('dhq_welcomed','1');
   }
-}
+})();
 
-// ── API HELPERS ────────────────────────────────────────────────────────────
-async function api(path){
+// ── SLEEPER PUBLIC API (trending only, no auth) ────────────────────────────
+const SLEEPER='https://api.sleeper.app/v1';
+async function sleeperGet(path){
   const r=await fetch(SLEEPER+path);
   if(!r.ok)throw new Error('HTTP '+r.status);
   return r.json();
 }
-function encUser(u){return encodeURIComponent(u);}
 
 // ── TAB SWITCHING ──────────────────────────────────────────────────────────
 let activeTab='roster';
@@ -464,70 +352,58 @@ function switchTab(t){
   document.getElementById('tab-'+t).classList.add('active');
   activeTab=t;
   if((t==='week')&&!W.loaded)loadWeekData();
-  if((t==='draft'||t==='trade')&&!G._draftLoaded)loadDraftData();
+  if((t==='draft'||t==='trade')&&!G._draftLoaded){G._draftLoaded=true;renderDraft();}
 }
 
 // ── ROSTER TAB ─────────────────────────────────────────────────────────────
 function renderRoster(){
-  if(!G.myRoster)return;
-  const roster=G.myRoster;
-  const pids=(roster.players||[]);
-  const taxiIds=new Set(roster.taxi||[]);
-  const starters=new Set(roster.starters||[]);
+  const active=G.ld.active||[];
+  const yr=new Date().getFullYear();
 
-  // collect player objects
-  const players=pids.map(id=>{
-    const p=G.players[id]||{};
-    return{id,name:fullName(p),pos:p.position||'?',age:p.age||0,
-      dv:getDV(fullName(p)),team:p.team||'FA',taxi:taxiIds.has(id)};
-  }).sort((a,b)=>{
+  // build player list from contracts
+  const players=active.map(c=>({
+    name:c.name, pos:c.pos||'?', dv:getDV(c.name),
+    expiry:c.expiry||yr, years:c.years||1, taxi:c.taxi||false
+  })).sort((a,b)=>{
     const po=['QB','RB','WR','TE','K','DST','?'];
     return po.indexOf(a.pos)-po.indexOf(b.pos)||(b.dv-a.dv);
   });
 
-  // stats
   const totalVal=players.reduce((s,p)=>s+p.dv,0);
-  const avgAge=players.length?Math.round(players.reduce((s,p)=>s+(p.age||25),0)/players.length):0;
-  const expiring=G.ld.active.filter(c=>c.expiry<=new Date().getFullYear()+1).length;
+  const expiring=players.filter(p=>p.expiry<=yr+1).length;
+  const taxiCount=players.filter(p=>p.taxi).length;
 
-  const sg=document.getElementById('roster-stats');
-  sg.innerHTML=`
+  document.getElementById('roster-stats').innerHTML=`
     <div class="stat-box"><div class="label">Total Value</div><div class="value">${(totalVal/1000).toFixed(1)}k</div><div class="sub">Dynasty pts</div></div>
-    <div class="stat-box"><div class="label">Avg Age</div><div class="value">${avgAge}</div><div class="sub">years</div></div>
-    <div class="stat-box"><div class="label">Players</div><div class="value">${players.length}</div><div class="sub">on roster</div></div>
-    <div class="stat-box"><div class="label">Expiring</div><div class="value">${expiring}</div><div class="sub">contracts</div></div>
+    <div class="stat-box"><div class="label">Contracts</div><div class="value">${players.length}</div><div class="sub">active</div></div>
+    <div class="stat-box"><div class="label">Expiring</div><div class="value">${expiring}</div><div class="sub">by ${yr+1}</div></div>
+    <div class="stat-box"><div class="label">Taxi</div><div class="value">${taxiCount}</div><div class="sub">squad</div></div>
   `;
 
-  // group by pos
   const groups={};
-  players.forEach(p=>{
-    if(!groups[p.pos])groups[p.pos]=[]; groups[p.pos].push(p);
-  });
+  players.forEach(p=>{if(!groups[p.pos])groups[p.pos]=[];groups[p.pos].push(p);});
 
   let html='';
-  const posOrder=['QB','RB','WR','TE','K','DST','?'];
-  posOrder.forEach(pos=>{
+  ['QB','RB','WR','TE','K','DST','?'].forEach(pos=>{
     if(!groups[pos])return;
     html+=`<div class="section-label">${pos}</div><div class="card">`;
     groups[pos].forEach(p=>{
       const vl=valLabel(p.dv);
-      const contract=G.ld.active.find(c=>normName(c.name)===normName(p.name));
-      const cBadge=contract?`<span class="badge badge-yellow">${contract.expiry}</span>`:'';
-      const taxiBadge=p.taxi?'<span class="badge badge-taxi">TAXI</span>':'';
       html+=`<div class="player-row">
         <span class="badge badge-${pos.toLowerCase()}">${pos}</span>
         <div style="flex:1">
-          <div class="player-name">${p.name} <span style="font-size:11px;color:var(--muted)">${p.team}</span></div>
-          <div class="player-meta">${p.age?p.age+'yo ':''}</div>
+          <div class="player-name">${p.name}</div>
+          <div class="player-meta">${p.years}yr · expires ${p.expiry}</div>
         </div>
-        ${taxiBadge}${cBadge}
-        <div class="val">${p.dv||'—'}</div>
+        ${p.taxi?'<span class="badge badge-taxi">TAXI</span>':''}
+        <span class="badge ${vl.cls}" style="margin-left:4px">${vl.t}</span>
+        <div class="val" style="margin-left:6px">${p.dv||'—'}</div>
       </div>`;
     });
     html+='</div>';
   });
 
-  document.getElementById('roster-list').innerHTML=html||'<div class="empty">No players found</div>';
+  document.getElementById('roster-list').innerHTML=html||'<div class="empty">No contracts loaded</div>';
 }
 
 function fullName(p){
@@ -638,68 +514,51 @@ async function loadWeekData(){
   W.loading=true;
   try{
     const [state,trending]=await Promise.all([
-      api('/state/nfl'),
-      api('/players/nfl/trending/add?lookback_hours=24&limit=30'),
+      sleeperGet('/state/nfl'),
+      sleeperGet('/players/nfl/trending/add?lookback_hours=24&limit=30'),
     ]);
     W.state=state;
     W.trending=trending||[];
-    // Try to get projections
-    const week=state.display_week||state.week||1;
-    const season=state.season||G.season;
-    try{
-      const proj=await api(`/projections/nfl/regular/${season}/${week}`);
-      W.proj=proj||{};
-    }catch{W.proj={};}
     W.loaded=true;
     renderWeek();
   }catch(e){
-    document.getElementById('week-content').innerHTML=`<div class="empty">Could not load week data.<br><small>${e.message}</small></div>`;
+    // Still render week tab with local data even if Sleeper is unreachable
+    W.loaded=true;
+    renderWeek();
   }
   W.loading=false;
 }
 
 function renderWeek(){
   const state=W.state||{};
-  const week=state.display_week||state.week||'?';
-  const season=state.season||G.season;
+  const week=state.display_week||state.week||'—';
+  const season=state.season||new Date().getFullYear();
 
-  // build my roster player list
-  const myPids=new Set(G.myRoster?G.myRoster.players||[]:[]);
-  const taxiIds=new Set(G.myRoster?G.myRoster.taxi||[]:[]);
+  // build sit/start from local active contracts (no Sleeper roster needed)
+  const active=G.ld.active||[];
+  const taxiNames=new Set(active.filter(c=>c.taxi).map(c=>normName(c.name)));
+  const myProj=active.filter(c=>!c.taxi&&['QB','RB','WR','TE'].includes(c.pos)).map(c=>({
+    name:c.name, pos:c.pos, pts:0, injured:false
+  }));
 
-  // sit/start: top projected from my roster
-  const myProj=[];
-  myPids.forEach(id=>{
-    if(taxiIds.has(id))return;
-    const p=G.players[id]||{};
-    const proj=W.proj[id]||{};
-    const pts=proj.pts_ppr||proj.pts_half_ppr||proj.pts_std||0;
-    myProj.push({id,name:fullName(p),pos:p.position||'?',team:p.team||'FA',pts,injured:p.injury_status});
-  });
-  myProj.sort((a,b)=>b.pts-a.pts);
-
-  // trending FAs (not on my roster)
-  const trendFa=W.trending.filter(t=>!myPids.has(t.player_id)).slice(0,10);
+  // trending FAs from Sleeper public endpoint (no auth needed)
+  const myNames=new Set(active.map(c=>normName(c.name)));
+  const trendFa=W.trending.slice(0,10);
 
   let html=`<div style="padding:12px">
     <div class="card" style="margin-bottom:12px">
       <div class="card-header"><h3>📅 Week ${week} · ${season}</h3></div>
     </div>`;
 
-  // Sit/Start
-  html+=`<div class="section-label">Sit/Start — My Starters</div><div class="card">`;
-  if(!myProj.length){html+='<div class="empty">No roster data</div>';}
+  // Sit/Start — based on your contracts (no projections available without Sleeper login)
+  html+=`<div class="section-label">My Roster — Start/Sit Guide</div><div class="card">`;
+  if(!myProj.length){html+='<div class="empty">No active contracts</div>';}
   else{
-    const starters=myProj.filter(p=>['QB','RB','WR','TE'].includes(p.pos)).slice(0,12);
-    starters.forEach(p=>{
-      const rec=p.pts>=15?'🟢 Start':p.pts>=8?'🟡 Flex':p.pts<5&&p.pts>0?'🔴 Sit':'—';
-      const inj=p.injured?`<span style="color:var(--red);font-size:11px"> ⚠️${p.injured}</span>`:'';
+    myProj.slice(0,12).forEach(p=>{
       html+=`<div class="player-row">
         <span class="badge badge-${p.pos.toLowerCase()}">${p.pos}</span>
-        <div style="flex:1"><div class="player-name">${p.name}${inj}</div>
-          <div class="player-meta">${p.team}</div></div>
-        ${p.pts?`<span class="week-proj">${p.pts.toFixed(1)} pts</span>`:''}
-        <span style="font-size:12px;margin-left:8px">${rec}</span>
+        <div style="flex:1"><div class="player-name">${p.name}</div></div>
+        <span style="font-size:12px;color:var(--muted)">Check Sleeper app for projections</span>
       </div>`;
     });
   }
@@ -707,15 +566,14 @@ function renderWeek(){
 
   // Trending FAs
   html+=`<div class="section-label">🔥 Trending Free Agents</div><div class="card">`;
-  if(!trendFa.length){html+='<div class="empty">No trending data</div>';}
+  if(!trendFa.length){html+='<div class="empty">Loading trending data...</div>';}
   else{
     trendFa.forEach(t=>{
-      const p=G.players[t.player_id]||{};
-      const dv=getDV(fullName(p));
+      const name=t.player_id||'Unknown';
+      const dv=getDV(name);
       html+=`<div class="player-row">
-        <span class="badge badge-${(p.position||'').toLowerCase()}">${p.position||'?'}</span>
-        <div style="flex:1"><div class="player-name">${fullName(p)}</div>
-          <div class="player-meta">${p.team||'FA'} · +${t.count} adds</div></div>
+        <div style="flex:1"><div class="player-name">${name}</div>
+          <div class="player-meta">+${t.count} adds (24h)</div></div>
         <span class="trending-badge">+${t.count}</span>
         ${dv?`<span class="val" style="margin-left:6px">${dv}</span>`:''}
       </div>`;
@@ -741,45 +599,61 @@ function renderWeek(){
 }
 
 // ── DRAFT TAB ──────────────────────────────────────────────────────────────
-async function loadDraftData(){
-  G._draftLoaded=true;
-  try{
-    // rosters already loaded; build pick list from traded picks
-    renderDraft();
-  }catch(e){
-    document.getElementById('draft-content').innerHTML=`<div class="empty">${e.message}</div>`;
-  }
-}
-
 function renderDraft(){
-  const picks=G.picks||[];
-  // picks the owner has traded away (owned_by != original_owner and current_owner != my id)
-  // build roster owner map
-  const ownerMap={};
-  G.rosters.forEach(r=>{ownerMap[r.roster_id]=r.owner_id;});
-  // picks I currently own
-  const myRosterId=G.myRoster?G.myRoster.roster_id:null;
-  const myPicks=picks.filter(p=>p.owner_id===G.userId||p.roster_id===myRosterId);
-  const theirPicks=picks.filter(p=>p.previous_owner_id===G.userId&&p.owner_id!==G.userId);
+  const needs=G.ld.needs||[];
+  const active=G.ld.active||[];
+  const yr=new Date().getFullYear();
+
+  // Position needs analysis
+  const activeByPos={};
+  active.forEach(c=>{if(!activeByPos[c.pos])activeByPos[c.pos]=[];activeByPos[c.pos].push(c);});
+
+  // Pick values reference
+  const pickYears=[String(yr),String(yr+1),String(yr+2)];
+  const rounds=['1st','2nd','3rd'];
 
   let html=`<div style="padding:12px">`;
-  html+=`<div class="section-label">Picks I Own</div><div class="card">`;
-  if(!myPicks.length)html+='<div class="empty">No traded picks on your side</div>';
-  myPicks.forEach(p=>{
-    html+=`<div class="pick-row">
-      <div style="flex:1"><div class="pick-label">${p.season} Round ${p.round} ${p.roster_id===myRosterId?'(own)':'(from trade)'}</div>
-      <div class="pick-owner">Originally: roster ${p.roster_id}</div></div>
-      <span class="val">${getDV(p.season+' '+['1st','2nd','3rd'][p.round-1])||'?'}</span>
-    </div>`;
+
+  // Target needs
+  html+=`<div class="section-label">🎯 Draft Targets (Your Needs)</div><div class="card">`;
+  if(!needs.length){html+='<div class="empty">No needs listed</div>';}
+  else{
+    needs.forEach(n=>{
+      const dv=getDV(n.name);
+      const vl=valLabel(dv);
+      html+=`<div class="player-row">
+        <span class="badge badge-${(n.pos||'').toLowerCase()}">${n.pos||'?'}</span>
+        <span class="player-name">${n.name}</span>
+        ${dv?`<span class="badge ${vl.cls}" style="margin-left:4px">${vl.t}</span><span class="val" style="margin-left:6px">${dv}</span>`:''}
+      </div>`;
+    });
+  }
+  html+='</div>';
+
+  // Pick values reference
+  html+=`<div class="section-label">📋 Pick Value Reference</div><div class="card">`;
+  pickYears.forEach(y=>{
+    rounds.forEach(r=>{
+      const label=y+' '+r;
+      const dv=getDV(label);
+      if(dv){html+=`<div class="pick-row">
+        <div class="pick-label">${label}</div>
+        <span class="val">${dv}</span>
+      </div>`;}
+    });
   });
   html+='</div>';
 
-  html+=`<div class="section-label">Picks I've Traded Away</div><div class="card">`;
-  if(!theirPicks.length)html+='<div class="empty">None</div>';
-  theirPicks.forEach(p=>{
-    html+=`<div class="pick-row">
-      <div class="pick-label">${p.season} Round ${p.round}</div>
-      <span style="font-size:11px;color:var(--red)">traded away</span>
+  // Position depth
+  html+=`<div class="section-label">📊 Your Position Depth</div><div class="card">`;
+  ['QB','RB','WR','TE','DST'].forEach(pos=>{
+    const count=(activeByPos[pos]||[]).length;
+    const needCount=needs.filter(n=>n.pos===pos).length;
+    const bar=count>=4?'🟢':count>=2?'🟡':'🔴';
+    html+=`<div class="player-row">
+      <span class="badge badge-${pos.toLowerCase()}">${pos}</span>
+      <span class="player-name">${bar} ${count} active</span>
+      ${needCount?`<span style="font-size:12px;color:var(--yellow)">${needCount} need(s)</span>`:''}
     </div>`;
   });
   html+='</div></div>';
@@ -799,19 +673,18 @@ function searchTrade(side,q){
   const rounds=['1st','2nd','3rd'];
   pickYears.forEach(yr=>rounds.forEach(r=>{
     const label=yr+' '+r;
-    if(label.toLowerCase().includes(q.toLowerCase()))matches.push({type:'pick',name:label,dv:getDV(label)});
+    if(label.toLowerCase().includes(q.toLowerCase()))matches.push({type:'pick',name:label,pos:'Pick',dv:getDV(label)});
   }));
-  // search players
-  Object.entries(G.players).forEach(([id,p])=>{
-    const n=fullName(p);
-    if(n.toLowerCase().includes(q.toLowerCase())){
-      matches.push({type:'player',name:n,pos:p.position||'?',dv:getDV(n)});
+  // search DV player database
+  Object.keys(DV).forEach(k=>{
+    if(k.toLowerCase().includes(q.toLowerCase())){
+      matches.push({type:'player',name:k,pos:'?',dv:DV[k]});
     }
   });
-  // also search DV keys
-  Object.keys(DV).forEach(k=>{
-    if(k.toLowerCase().includes(q.toLowerCase())&&!matches.find(m=>m.name===k)){
-      matches.push({type:'player',name:k,dv:DV[k]});
+  // also check active contracts
+  (G.ld.active||[]).forEach(c=>{
+    if(c.name.toLowerCase().includes(q.toLowerCase())&&!matches.find(m=>m.name===c.name)){
+      matches.push({type:'player',name:c.name,pos:c.pos||'?',dv:getDV(c.name)});
     }
   });
   matches.sort((a,b)=>b.dv-a.dv);
@@ -916,43 +789,26 @@ function myRosterContext(){
   const ld=G.ld;
   const active=(ld.active||[]).map(c=>`${c.name}(${c.pos},expires ${c.expiry}${c.taxi?' TAXI':''})`).join(', ');
   const needs=(ld.needs||[]).map(n=>`${n.name}(${n.pos})`).join(', ');
-  const pids=G.myRoster?G.myRoster.players||[]:[];
-  const rosterNames=pids.slice(0,20).map(id=>fullName(G.players[id]||{})).filter(n=>n!=='Unknown').join(', ');
-  return `Active contracts: ${active||'none'}. Team needs: ${needs||'none'}. Sleeper roster (first 20): ${rosterNames||'not loaded'}.`;
+  return `Active contracts: ${active||'none'}. Team needs: ${needs||'none'}.`;
 }
 
 const DYNASTY_FAQ=[
   {pat:/start|sit|lineup|who.*start|bench/i,topic:'waiver',
    fn(q){
-     const ctx=myRosterContext();
-     const myProj=[];
-     if(G.myRoster){
-       (G.myRoster.players||[]).forEach(id=>{
-         const p=G.players[id]||{};
-         const proj=W.proj[id]||{};
-         const pts=proj.pts_ppr||0;
-         myProj.push({name:fullName(p),pos:p.position||'?',pts});
-       });
-     }
-     myProj.sort((a,b)=>b.pts-a.pts);
-     const starters=myProj.filter(p=>['QB','RB','WR','TE'].includes(p.pos)).slice(0,8);
-     if(starters.length&&starters[0].pts>0){
-       const starts=starters.filter(p=>p.pts>=10).map(p=>`${p.name}(${p.pts.toFixed(1)})`).join(', ');
-       const sits=starters.filter(p=>p.pts<8&&p.pts>0).map(p=>`${p.name}(${p.pts.toFixed(1)})`).join(', ');
-       return{text:`Based on current projections from your roster:\n\n▶️ START: ${starts||'check manually'}\n⛔ CONSIDER SITTING: ${sits||'none flagged'}\n\nAlways verify injury reports and Vegas lines before locking your lineup.`,links:getLinks('waiver')};
-     }
-     return{text:`In dynasty, sit/start decisions depend on matchups, injury reports, and snap counts. Check the Week tab for current projections. Generally: start your studs every week, bench injured or bye-week players. Check FantasyPros or Sleeper's own projections for week-specific advice.`,links:getLinks('waiver')};
+     const active=G.ld.active||[];
+     const starters=active.filter(c=>!c.taxi&&['QB','RB','WR','TE'].includes(c.pos))
+       .sort((a,b)=>getDV(b.name)-getDV(a.name));
+     const startList=starters.slice(0,6).map(c=>c.name).join(', ');
+     return{text:`Based on dynasty value, your recommended starters:\n\n▶️ START: ${startList||'check your roster'}\n\nAlways verify injury reports, snap counts, and matchups in the Sleeper app before locking your lineup. The Week tab also has a quick Start/Sit guide.`,links:getLinks('waiver')};
    }},
   {pat:/free agent|pickup|waiver|add|fa pick/i,topic:'waiver',
    fn(q){
      const trending=W.trending||[];
-     const myPids=new Set(G.myRoster?G.myRoster.players||[]:[]);
-     const fas=trending.filter(t=>!myPids.has(t.player_id)).slice(0,5);
-     if(fas.length){
-       const names=fas.map(t=>{const p=G.players[t.player_id]||{};return`${fullName(p)} (+${t.count} adds)`;}).join(', ');
-       return{text:`🔥 Trending free agents right now: ${names}\n\nIn dynasty, prioritize FAs with youth, upside, and good depth chart situations. An older, higher-floor player may help you win now; a younger one builds long-term value.`,links:getLinks('waiver')};
+     if(trending.length){
+       const names=trending.slice(0,5).map(t=>`${t.player_id} (+${t.count} adds)`).join(', ');
+       return{text:`🔥 Trending free agents (from Sleeper): ${names}\n\nIn dynasty, prioritize FAs with youth, upside, and good depth chart situations. Check your needs list in the Contracts tab for specific targets.`,links:getLinks('waiver')};
      }
-     return{text:`Head to the Week tab to see trending free agents on Sleeper. For dynasty FA advice: prioritize youth and targets. Look for players whose depth chart situation just improved (starter injury, trade, etc.).`,links:getLinks('waiver')};
+     return{text:`Check the Week tab for trending free agents. For dynasty FA advice: prioritize youth and upside. Look for players whose depth chart situation just improved. Your needs list in Contracts shows your specific targets.`,links:getLinks('waiver')};
    }},
   {pat:/rookie|draft.*pick|pick.*draft|target.*rookie|rookie.*rank/i,topic:'rookies',
    fn(q){
@@ -1096,6 +952,212 @@ function onProviderChange(){
   document.getElementById('ai-key').placeholder=p==='groq'?'Groq API key (free at groq.com)':'API key';
 }
 function saveKey(){save('dhq_key',document.getElementById('ai-key').value);}
+
+// ── RECOMMEND FUNCTIONS ────────────────────────────────────────────────────
+function showRecommend(elId, html){
+  const el=document.getElementById(elId);
+  el.style.display='block';
+  el.innerHTML=html;
+  el.scrollIntoView({behavior:'smooth'});
+}
+
+function recommendContracts(){
+  const ld=G.ld;
+  const inv=ld.inventory||{};
+  const alloc=ld.allocations||{};
+  const used={};
+  Object.values(alloc).forEach(v=>{used[v]=(used[v]||0)+1;});
+  const avail={};
+  Object.keys(inv).forEach(k=>{avail[k]=Math.max(0,(inv[k]||0)-(used[k]||0));});
+
+  // score players by dynasty value + years remaining
+  const players=[...(ld.active||[])].map(c=>{
+    const dv=getDV(c.name);
+    const yr=new Date().getFullYear();
+    const remaining=Math.max(0,(c.expiry||yr)-yr);
+    return{...c,dv,remaining};
+  }).sort((a,b)=>b.dv-a.dv);
+
+  const recs=[];
+  const tempAvail={...avail};
+  const assigned={};
+
+  // assign longest slots to highest-value players first
+  const slotOrder=['4yr','3yr','2yr','1yr','xfer'];
+  players.forEach(p=>{
+    if(assigned[normName(p.name)])return;
+    const cur=alloc[normName(p.name)];
+    if(cur&&cur!=='—'){assigned[normName(p.name)]=cur;return;}
+    // find best available slot
+    for(const slot of slotOrder){
+      if((tempAvail[slot]||0)>0){
+        tempAvail[slot]--;
+        assigned[normName(p.name)]=slot;
+        const reason=p.dv>=7000?'Elite value — lock in long':p.dv>=5000?'Solid starter — worth multi-year':'Depth piece — short term is fine';
+        recs.push(`<div class="player-row"><span class="badge badge-${(p.pos||'').toLowerCase()}">${p.pos}</span>
+          <span class="player-name">${p.name}</span>
+          <span style="font-size:12px;color:var(--yellow)">${slot}</span>
+          <span style="font-size:11px;color:var(--muted);margin-left:8px">${reason}</span></div>`);
+        break;
+      }
+    }
+  });
+
+  const slotsLeft=Object.entries(tempAvail).filter(([,v])=>v>0).map(([k,v])=>`${v}× ${k}`).join(', ');
+  let html=`<div class="card">
+    <div class="card-header"><h3>🎯 Recommended Slot Assignments</h3></div>
+    ${recs.length?recs.join(''):'<div class="empty">All slots already assigned</div>'}
+    ${slotsLeft?`<div style="padding:8px 12px;font-size:12px;color:var(--muted)">Remaining open slots: ${slotsLeft}</div>`:''}
+  </div>`;
+  showRecommend('contracts-recommend', html);
+}
+
+function recommendWeek(){
+  const active=G.ld.active||[];
+  const myProj=active.filter(c=>!c.taxi&&['QB','RB','WR','TE'].includes(c.pos))
+    .map(c=>({name:c.name,pos:c.pos,pts:0,injured:false}));
+
+  // trending FA pickups
+  const trendFa=W.trending.slice(0,3).map(t=>`ID:${t.player_id} (+${t.count} adds)`);
+
+  const needs=G.ld.needs||[];
+  const needPositions=new Set(needs.map(n=>n.pos));
+
+  const needs=G.ld.needs||[];
+
+  // Sort roster by value — starters are your highest-value non-taxi players
+  const sorted=[...myProj].sort((a,b)=>getDV(b.name)-getDV(a.name));
+  const startRec=sorted.filter(p=>p.pos==='QB').slice(0,1)
+    .concat(sorted.filter(p=>p.pos==='RB').slice(0,2))
+    .concat(sorted.filter(p=>p.pos==='WR').slice(0,3))
+    .concat(sorted.filter(p=>p.pos==='TE').slice(0,1));
+  const flex=sorted.filter(p=>['RB','WR','TE'].includes(p.pos)&&!startRec.includes(p)).slice(0,2);
+
+  let html=`<div class="card">
+    <div class="card-header"><h3>🎯 Week Recommendations</h3></div>
+    <div class="card-body">
+      <div style="margin-bottom:10px"><strong style="color:var(--green)">▶️ Recommended Starters</strong><br>
+        ${startRec.map(p=>`<span class="badge badge-${p.pos.toLowerCase()}" style="margin-right:4px">${p.pos}</span>${p.name}`).join('<br>')||'No data'}
+      </div>
+      ${flex.length?`<div style="margin-bottom:10px"><strong style="color:var(--yellow)">⚡ Flex Options</strong><br>
+        ${flex.map(p=>`${p.name} (${p.pos})`).join('<br>')}
+      </div>`:''}
+      <div style="margin-bottom:10px;font-size:12px;color:var(--muted)">⚠️ Always verify injury reports and matchups in the Sleeper app before locking in your lineup.</div>
+      ${trendFa.length?`<div style="margin-bottom:6px"><strong style="color:var(--accent)">🔥 Trending FAs (from Sleeper)</strong><br>
+        <span style="font-size:12px;color:var(--muted)">${trendFa.join('<br>')}</span></div>`:''}
+      ${needs.length?`<div><strong style="color:var(--purple)">🎯 Needs to Fill This Week</strong><br>
+        ${needs.slice(0,5).map(n=>`${n.name} (${n.pos})`).join('<br>')}</div>`:''}
+    </div>
+  </div>`;
+  showRecommend('week-recommend', html);
+}
+
+function recommendDraft(){
+  const needs=G.ld.needs||[];
+  const active=G.ld.active||[];
+  const yr=new Date().getFullYear();
+
+  // find position gaps: positions in needs but weak in active
+  const activeByPos={};
+  active.forEach(c=>{
+    if(!activeByPos[c.pos])activeByPos[c.pos]=[];
+    activeByPos[c.pos].push({...c,dv:getDV(c.name)});
+  });
+
+  const posPriority=[];
+  ['TE','RB','QB','WR','DST'].forEach(pos=>{
+    const activeAtPos=(activeByPos[pos]||[]);
+    const needAtPos=needs.filter(n=>n.pos===pos);
+    const avgDV=activeAtPos.length?activeAtPos.reduce((s,c)=>s+c.dv,0)/activeAtPos.length:0;
+    if(needAtPos.length||avgDV<5000){
+      posPriority.push({pos,needCount:needAtPos.length,avgDV:Math.round(avgDV),targets:needAtPos.slice(0,2)});
+    }
+  });
+  posPriority.sort((a,b)=>b.needCount-a.needCount||(a.avgDV-b.avgDV));
+
+  // expiring contracts = consider replacing via draft/FA
+  const expiring=active.filter(c=>(c.expiry||yr)<=yr+1).map(c=>c.name);
+
+  let html=`<div class="card">
+    <div class="card-header"><h3>🎯 Draft Strategy Recommendations</h3></div>
+    <div class="card-body">
+      <div style="margin-bottom:12px"><strong style="color:var(--accent)">Priority Positions to Target</strong><br>
+      ${posPriority.length?posPriority.map(p=>{
+        const targetNames=p.targets.map(t=>t.name).join(', ');
+        return`<div style="margin-top:6px"><span class="badge badge-${p.pos.toLowerCase()}">${p.pos}</span>
+          <span style="font-size:12px;margin-left:6px">${p.needCount} need(s) listed${p.avgDV?` · Avg value on roster: ${p.avgDV}`:''}${targetNames?' · Targets: '+targetNames:''}</span></div>`;
+      }).join(''):'<span style="color:var(--muted)">No gaps detected</span>'}</div>
+
+      ${expiring.length?`<div style="margin-bottom:12px"><strong style="color:var(--yellow)">⏰ Expiring Contracts — Replace or Re-sign</strong><br>
+        <span style="font-size:13px">${expiring.join(', ')}</span><br>
+        <span style="font-size:12px;color:var(--muted)">These players need new slots by the deadline. Target cheap FA replacements if not re-signing.</span></div>`:''}
+
+      <div><strong style="color:var(--green)">📋 Best Rookie Targets for Your Needs</strong><br>
+        ${needs.filter(n=>['WR','RB','QB','TE'].includes(n.pos)).slice(0,5).map(n=>{
+          const dv=getDV(n.name);
+          return`<div style="margin-top:4px"><span class="badge badge-${n.pos.toLowerCase()}">${n.pos}</span>
+            <span style="font-size:13px;margin-left:6px">${n.name}</span>
+            ${dv?`<span class="val" style="margin-left:6px">${dv}</span>`:''}
+          </div>`;
+        }).join('')||'<span style="color:var(--muted)">No rookie needs listed</span>'}
+      </div>
+    </div>
+  </div>`;
+  showRecommend('draft-recommend', html);
+}
+
+function recommendTrade(){
+  const needs=G.ld.needs||[];
+  const active=G.ld.active||[];
+
+  // assets I can offer: high-value players with short contracts (tradeable)
+  const tradeable=active.filter(c=>{
+    const dv=getDV(c.name);
+    const yr=new Date().getFullYear();
+    const exp=(c.expiry||yr)-yr;
+    return dv>=4000&&exp<=1;// expiring high-value = sell high
+  }).sort((a,b)=>getDV(b.name)-getDV(a.name));
+
+  // keepers: high value, multi-year — don't trade these
+  const keepers=active.filter(c=>getDV(c.name)>=7000||(c.years||1)>=3)
+    .sort((a,b)=>getDV(b.name)-getDV(a.name));
+
+  // what to get: top needs with high DV
+  const wantList=needs.map(n=>({...n,dv:getDV(n.name)})).sort((a,b)=>b.dv-a.dv);
+
+  let html=`<div class="card">
+    <div class="card-header"><h3>🎯 Trade Recommendations</h3></div>
+    <div class="card-body">
+      <div style="margin-bottom:12px">
+        <strong style="color:var(--red)">📤 Sell / Trade Away (expiring or surplus)</strong><br>
+        ${tradeable.length?tradeable.slice(0,4).map(c=>{
+          const dv=getDV(c.name);
+          return`<div style="margin-top:4px"><span class="badge badge-${(c.pos||'').toLowerCase()}">${c.pos}</span>
+            <span style="font-size:13px;margin-left:6px">${c.name}</span>
+            <span class="val" style="margin-left:6px">${dv}</span>
+            <span style="font-size:11px;color:var(--muted);margin-left:6px">expires ${c.expiry}</span></div>`;
+        }).join(''):`<span style="color:var(--muted);font-size:13px">No obvious sell candidates right now</span>`}
+      </div>
+      <div style="margin-bottom:12px">
+        <strong style="color:var(--green)">🔒 Do NOT Trade (core keepers)</strong><br>
+        ${keepers.slice(0,3).map(c=>`<div style="margin-top:4px">
+          <span class="badge badge-${(c.pos||'').toLowerCase()}">${c.pos}</span>
+          <span style="font-size:13px;margin-left:6px">${c.name}</span>
+          <span class="val" style="margin-left:6px">${getDV(c.name)}</span></div>`).join('')||
+          '<span style="color:var(--muted)">None identified</span>'}
+      </div>
+      <div>
+        <strong style="color:var(--accent)">📥 Target in Trades (your needs)</strong><br>
+        ${wantList.slice(0,5).map(n=>`<div style="margin-top:4px">
+          <span class="badge badge-${(n.pos||'').toLowerCase()}">${n.pos}</span>
+          <span style="font-size:13px;margin-left:6px">${n.name}</span>
+          ${n.dv?`<span class="val" style="margin-left:6px">${n.dv}</span>`:''}
+        </div>`).join('')||'<span style="color:var(--muted)">No needs listed</span>'}
+      </div>
+    </div>
+  </div>`;
+  showRecommend('trade-recommend', html);
+}
 </script>
 </body>
 </html>
