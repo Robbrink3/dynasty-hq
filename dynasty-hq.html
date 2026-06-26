@@ -119,34 +119,25 @@ button.small{font-size:12px;padding:6px 10px;width:auto}
 .recommend-card p{font-size:12px;color:var(--muted);line-height:1.5}
 .trending-badge{font-size:10px;padding:2px 5px;border-radius:4px;background:#1a2d1a;color:var(--green)}
 .week-proj{font-size:12px;color:var(--yellow);font-weight:600}
-#login-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;
-  min-height:100dvh;padding:24px;gap:16px;text-align:center}
-#login-screen h1{font-size:28px;font-weight:800}
-#login-screen p{color:var(--muted);font-size:14px}
-#login-screen .login-box{width:100%;max-width:340px;display:flex;flex-direction:column;gap:10px}
 select option{background:var(--surface)}
 </style>
 </head>
 <body>
 
-<div id="login-screen">
-  <div style="font-size:48px">🏈</div>
-  <h1>Dynasty HQ</h1>
-  <p>Dynasty intelligence for your Sleeper league</p>
-  <div class="login-box">
-    <div id="login-status" style="color:var(--muted);font-size:13px">Loading your leagues...</div>
-    <div id="login-controls" style="display:none">
-      <input id="lg-select-wrap" style="display:none">
-      <select id="lg-select" style="margin-bottom:8px;display:none"></select>
-      <button id="lg-go-btn" style="display:none" onclick="selectLeague()">Load League</button>
-    </div>
+<!-- League picker overlay (shown only if multiple leagues found) -->
+<div id="lg-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:999;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;width:88%;max-width:340px">
+    <h3 style="margin-bottom:12px">Select League</h3>
+    <select id="lg-select" style="margin-bottom:12px"></select>
+    <button onclick="selectLeague()">Load League</button>
   </div>
 </div>
 
-<div id="app" style="display:none;display:flex;flex-direction:column;height:100dvh">
+<div id="app" style="display:flex;flex-direction:column;height:100dvh">
   <div id="header">
     <h1>🏈 Dynasty HQ</h1>
-    <span class="league-name" id="league-label">—</span>
+    <span class="league-name" id="league-label" style="color:var(--muted);font-size:11px"></span>
+    <span id="sync-status" style="font-size:11px;color:var(--muted)"></span>
   </div>
   <div id="content">
     <!-- ROSTER -->
@@ -338,42 +329,52 @@ let tradeGive=[],tradeGet=[];
   const yr=new Date().getFullYear();
   const m=new Date().getMonth();
   G.season=load('dhq_season',String(m<8?yr-1:yr));
-  save('dhq_user',OWNER_USERNAME);
+  // Show app immediately with contract data (offline-capable)
+  renderContracts();
+  setSyncStatus('⏳ Syncing...');
   const savedLg=load('dhq_saved_lg','');
   if(savedLg){autoRestoreLeague(savedLg,G.season);}
-  else{doLogin();}
+  else{doLoad();}
 })();
 
+function setSyncStatus(t){
+  const el=document.getElementById('sync-status');
+  if(el)el.textContent=t;
+}
+
 async function autoRestoreLeague(lgId,season){
-  setLoginStatus('Signing in as '+OWNER_USERNAME+'...');
   try{
-    const user=await api('/user/'+OWNER_USERNAME);
+    const user=await api('/user/'+encUser(OWNER_USERNAME));
     G.user=user; G.userId=user.user_id;
     const leagues=await api('/user/'+user.user_id+'/leagues/nfl/'+season);
     G.leagues=leagues||[];
     const lg=G.leagues.find(l=>l.league_id===lgId);
     if(lg){await loadLeague(lg);}
-    else{showLeaguePicker();}
-  }catch(e){setLoginStatus('Error: '+e.message);showLeaguePicker();}
+    else if(G.leagues.length){showLeaguePicker();}
+    else{setSyncStatus('No leagues found');}
+  }catch(e){setSyncStatus('⚠️ Offline');console.error(e);}
 }
 
-async function doLogin(){
-  setLoginStatus('Signing in as '+OWNER_USERNAME+'...');
+async function doLoad(){
   try{
-    const user=await api('/user/'+OWNER_USERNAME);
+    const user=await api('/user/'+encUser(OWNER_USERNAME));
+    if(!user||!user.user_id)throw new Error('Not found');
     G.user=user; G.userId=user.user_id;
     const leagues=await api('/user/'+user.user_id+'/leagues/nfl/'+G.season);
     G.leagues=leagues||[];
+    if(!G.leagues.length){setSyncStatus('No leagues found');return;}
     if(G.leagues.length===1){await loadLeague(G.leagues[0]);}
     else{showLeaguePicker();}
   }catch(e){
-    setLoginStatus('Could not load Sleeper data. Check connection.');
-    document.getElementById('login-controls').style.display='block';
-    document.getElementById('login-status').textContent='Tap below to retry';
+    setSyncStatus('⚠️ Offline');
+    console.error('Load error:',e);
+    // Still show roster tab with contract data
+    document.getElementById('roster-list').innerHTML=`<div class="card"><div class="card-body" style="text-align:center;color:var(--muted)">
+      <div style="font-size:13px">Could not reach Sleeper API.<br>Contract data is still available.</div>
+      <button class="secondary" style="margin-top:10px;width:auto;padding:8px 16px" onclick="doLoad()">🔄 Retry</button>
+    </div></div>`;
   }
 }
-
-function setLoginStatus(t){document.getElementById('login-status').textContent=t;}
 
 function showLeaguePicker(){
   const sel=document.getElementById('lg-select');
@@ -383,15 +384,14 @@ function showLeaguePicker(){
     o.value=l.league_id; o.textContent=l.name;
     sel.appendChild(o);
   });
-  sel.style.display='block';
-  document.getElementById('lg-go-btn').style.display='block';
-  document.getElementById('login-controls').style.display='block';
-  setLoginStatus('Choose your league:');
+  const ov=document.getElementById('lg-overlay');
+  ov.style.display='flex';
 }
 
 async function selectLeague(){
   const id=document.getElementById('lg-select').value;
   if(!id)return;
+  document.getElementById('lg-overlay').style.display='none';
   const lg=G.leagues.find(l=>l.league_id===id);
   if(lg)await loadLeague(lg);
 }
@@ -412,7 +412,7 @@ async function loadLeague(lg){
     // load players (cached)
     await loadPlayers();
     showApp(lg.name);
-  }catch(e){setLoginStatus('Error loading league: '+e.message);}
+  }catch(e){setSyncStatus('⚠️ Error');console.error(e);}
 }
 
 async function loadPlayers(){
@@ -430,9 +430,8 @@ async function loadPlayers(){
 }
 
 function showApp(lgName){
-  document.getElementById('login-screen').style.display='none';
-  document.getElementById('app').style.display='flex';
   document.getElementById('league-label').textContent=lgName;
+  setSyncStatus('✓');
   renderRoster();
   renderContracts();
   // restore AI key
@@ -441,8 +440,11 @@ function showApp(lgName){
   const key=load('dhq_key','');
   if(key)document.getElementById('ai-key').value=key;
   onProviderChange();
-  // welcome message
-  appendMsg('assistant','Hi! I\'m your Dynasty HQ assistant. Ask me anything about your roster, dynasty strategy, sit/start decisions, free agent pickups, or rookies to target. I know your team!');
+  // welcome message (only first time)
+  if(!load('dhq_welcomed','')){
+    appendMsg('assistant','Dynasty HQ ready! Ask me about sit/start, free agents, rookies, or trade values.');
+    save('dhq_welcomed','1');
+  }
 }
 
 // ── API HELPERS ────────────────────────────────────────────────────────────
@@ -451,6 +453,7 @@ async function api(path){
   if(!r.ok)throw new Error('HTTP '+r.status);
   return r.json();
 }
+function encUser(u){return encodeURIComponent(u);}
 
 // ── TAB SWITCHING ──────────────────────────────────────────────────────────
 let activeTab='roster';
@@ -644,7 +647,7 @@ async function loadWeekData(){
     const week=state.display_week||state.week||1;
     const season=state.season||G.season;
     try{
-      const proj=await api('/projections/nfl/regular/${season}/${week}');
+      const proj=await api(`/projections/nfl/regular/${season}/${week}`);
       W.proj=proj||{};
     }catch{W.proj={};}
     W.loaded=true;
@@ -915,7 +918,7 @@ function myRosterContext(){
   const needs=(ld.needs||[]).map(n=>`${n.name}(${n.pos})`).join(', ');
   const pids=G.myRoster?G.myRoster.players||[]:[];
   const rosterNames=pids.slice(0,20).map(id=>fullName(G.players[id]||{})).filter(n=>n!=='Unknown').join(', ');
-  return `Owner: ${OWNER_USERNAME}. Active contracts: ${active||'none'}. Team needs: ${needs||'none'}. Sleeper roster (first 20): ${rosterNames||'not loaded'}.`;
+  return `Active contracts: ${active||'none'}. Team needs: ${needs||'none'}. Sleeper roster (first 20): ${rosterNames||'not loaded'}.`;
 }
 
 const DYNASTY_FAQ=[
@@ -938,7 +941,7 @@ const DYNASTY_FAQ=[
        const sits=starters.filter(p=>p.pts<8&&p.pts>0).map(p=>`${p.name}(${p.pts.toFixed(1)})`).join(', ');
        return{text:`Based on current projections from your roster:\n\n▶️ START: ${starts||'check manually'}\n⛔ CONSIDER SITTING: ${sits||'none flagged'}\n\nAlways verify injury reports and Vegas lines before locking your lineup.`,links:getLinks('waiver')};
      }
-     return{text:`In dynasty, sit/start decisions depend on matchups, injury reports, and snap counts. For your team (${OWNER_USERNAME}), check the Week tab for current projections. Generally: start your studs every week, bench injured or bye-week players. Check FantasyPros or Sleeper's own projections for week-specific advice.`,links:getLinks('waiver')};
+     return{text:`In dynasty, sit/start decisions depend on matchups, injury reports, and snap counts. Check the Week tab for current projections. Generally: start your studs every week, bench injured or bye-week players. Check FantasyPros or Sleeper's own projections for week-specific advice.`,links:getLinks('waiver')};
    }},
   {pat:/free agent|pickup|waiver|add|fa pick/i,topic:'waiver',
    fn(q){
@@ -956,12 +959,12 @@ const DYNASTY_FAQ=[
      const needs=G.ld.needs||[];
      const rookieNeeds=needs.filter(n=>['WR','RB','QB','TE'].includes(n.pos));
      const targets=rookieNeeds.map(n=>{const dv=getDV(n.name);return`${n.name}(${n.pos}, value:${dv||'?'})`;}).join(', ');
-     return{text:`Your identified rookie/target needs: ${targets||'none listed'}\n\nDynasty rookie drafts are typically held after the NFL Draft in April/May. Key targets for your team's needs:\n- QB: Cam Ward (7000) — high upside\n- RB: Kaleb Johnson (6500) — volume back\n- WR: Tre Harris (6200), Jaylin Noel (5800)\n\nRookies take 1-2 years to develop. Target them in rounds 1-2 for long-term value.`,links:getLinks('rookies')};
+     return{text:`Your identified rookie/target needs: ${targets||'none listed'}\n\nDynasty rookie drafts are typically held after the NFL Draft in April/May. Key targets for your needs:\n- QB: Cam Ward (7000) — high upside\n- RB: Kaleb Johnson (6500) — volume back\n- WR: Tre Harris (6200), Jaylin Noel (5800)\n\nRookies take 1-2 years to develop. Target them in rounds 1-2 for long-term value.`,links:getLinks('rookies')};
    }},
   {pat:/trade|value|calculator|worth|trade.*for|should.*trade/i,topic:'trade',
    fn(q){
      const ctx=myRosterContext();
-     return{text:`For trade evaluation, I recommend the Trade tab in Dynasty HQ — it uses dynasty values to grade trades instantly.\n\nGeneral trade advice for ${OWNER_USERNAME}:\n- Your team has strong WR depth (Rashee Rice at 8600 is your crown jewel)\n- You need TE depth (David Njoku, Tucker Kraft are targets)\n- Expiring contracts (2026) may be trade candidates if you're rebuilding\n\nAlways use KTC values as a reference, but also factor in age, scheme fit, and injury history.`,links:getLinks('trade')};
+     return{text:`For trade evaluation, use the Trade tab — it grades trades using dynasty values instantly.\n\nGeneral trade advice:\n- Strong WR depth (Rashee Rice at 8600 is your crown jewel)\n- Need TE depth (David Njoku, Tucker Kraft are targets)\n- Expiring contracts (2026) may be trade candidates if you're rebuilding\n\nAlways use KTC values as a reference, but also factor in age, scheme fit, and injury history.`,links:getLinks('trade')};
    }},
   {pat:/contract|slot|year|extension|franchise/i,topic:'contract',
    fn(q){
@@ -983,7 +986,7 @@ const DYNASTY_FAQ=[
      const wrs=active.filter(c=>c.pos==='WR').map(c=>c.name);
      const tes=active.filter(c=>c.pos==='TE').map(c=>c.name);
      const totalDV=active.reduce((s,c)=>s+getDV(c.name),0);
-     return{text:`📊 ${OWNER_USERNAME} Roster Overview:\n\nQBs: ${qbs.join(', ')||'none'}\nRBs: ${rbs.join(', ')||'none'}\nWRs: ${wrs.join(', ')||'none'}\nTEs: ${tes.join(', ')||'none'}\n\nEstimated total value: ${totalDV}\nStrengths: WR (Rashee Rice is elite), QB young core\nWeaknesses: TE depth (David Njoku, Tucker Kraft on your needs list)\n\nMost contracts expire in 2026 — you'll want to address that at the deadline.`,links:getLinks('strategy')};
+     return{text:`📊 Roster Overview:\n\nQBs: ${qbs.join(', ')||'none'}\nRBs: ${rbs.join(', ')||'none'}\nWRs: ${wrs.join(', ')||'none'}\nTEs: ${tes.join(', ')||'none'}\n\nEstimated total value: ${totalDV}\nStrengths: WR (Rashee Rice is elite), QB young core\nWeaknesses: TE depth (David Njoku, Tucker Kraft on your needs list)\n\nMost contracts expire in 2026 — address that at the deadline.`,links:getLinks('strategy')};
    }},
   {pat:/dynasty.*football|what is dynasty|how.*dynasty.*work|explain dynasty|new.*dynasty|beginner/i,topic:'strategy',
    fn(q){
@@ -997,7 +1000,7 @@ function ruleBasedAnswer(q){
   }
   // general fallback
   const ctx=myRosterContext();
-  return{text:`I don't have a specific answer for that question yet. Here are some resources that might help. Your team context: ${OWNER_USERNAME} has ${(G.ld.active||[]).length} active contracts and ${(G.ld.needs||[]).length} listed needs.`,links:getLinks('general')};
+  return{text:`I don't have a specific answer for that yet. Your team has ${(G.ld.active||[]).length} active contracts and ${(G.ld.needs||[]).length} listed needs. Here are some resources that may help:`,links:getLinks('general')};
 }
 
 function appendMsg(role,txt,thinking=false,links=[]){
@@ -1050,7 +1053,7 @@ async function sendAsk(){
 async function groqAnswer(q,thinkingEl){
   const key=load('dhq_key','');
   const ctx=myRosterContext();
-  const systemPrompt=`You are a dynasty fantasy football assistant for ${OWNER_USERNAME}. Be concise and helpful. Roster context: ${ctx}`;
+  const systemPrompt=`You are a dynasty fantasy football assistant. Be concise and helpful. Roster context: ${ctx}`;
   const res=await fetch('https://api.groq.com/openai/v1/chat/completions',{
     method:'POST',
     headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
