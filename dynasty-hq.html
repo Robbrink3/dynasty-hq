@@ -1,45 +1,1098 @@
-🏈
-Dynasty HQ
-Dynasty intelligence — no API purchase required
-SLEEPER USERNAME
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dynasty HQ">
+<title>Dynasty HQ</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0d1117;--surface:#161b22;--border:#30363d;--accent:#58a6ff;
+  --green:#3fb950;--red:#f85149;--yellow:#d29922;--purple:#bc8cff;
+  --text:#e6edf3;--muted:#8b949e;--radius:8px;
+  --tab-h:56px;--header-h:52px;
+}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  font-size:14px;line-height:1.5;min-height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+#header{height:var(--header-h);background:var(--surface);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 12px;gap:8px;flex-shrink:0;position:sticky;top:0;z-index:100}
+#header h1{font-size:17px;font-weight:700;flex:1}
+#header .league-name{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+#content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:calc(var(--tab-h) + env(safe-area-inset-bottom))}
+#tabs{height:var(--tab-h);background:var(--surface);border-top:1px solid var(--border);
+  display:flex;position:fixed;bottom:0;left:0;right:0;z-index:100;
+  padding-bottom:env(safe-area-inset-bottom)}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:2px;cursor:pointer;color:var(--muted);font-size:9px;font-weight:500;
+  transition:color .15s;padding:6px 2px}
+.tab.active{color:var(--accent)}
+.tab span{font-size:18px;line-height:1}
+.panel{display:none;padding:12px}
+.panel.active{display:block}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;overflow:hidden}
+.card-header{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-header h3{font-size:13px;font-weight:600}
+.card-body{padding:10px 12px}
+.badge{font-size:10px;padding:2px 6px;border-radius:4px;font-weight:600}
+.badge-qb{background:#1c2a3a;color:#79c0ff}
+.badge-rb{background:#1a2d1a;color:#56d364}
+.badge-wr{background:#2d1f3a;color:#bc8cff}
+.badge-te{background:#2d2210;color:#ffa657}
+.badge-dst{background:#1f2d2d;color:#39d353}
+.badge-k{background:#2a2a1a;color:#d4c96c}
+.badge-green{background:#1a2d1a;color:var(--green)}
+.badge-yellow{background:#2d2410;color:var(--yellow)}
+.badge-red{background:#2d1a1a;color:var(--red)}
+.badge-taxi{background:#1c2a3a;color:var(--accent);font-size:9px}
+.player-row{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border)}
+.player-row:last-child{border-bottom:none}
+.player-name{flex:1;font-size:13px;font-weight:500}
+.player-meta{font-size:11px;color:var(--muted)}
+.val{font-size:12px;font-weight:600;color:var(--accent)}
+.section-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;
+  padding:8px 12px 4px;background:var(--bg);position:sticky;top:0}
+input,select,textarea{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  color:var(--text);font-size:14px;padding:8px 10px;width:100%;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+button{background:var(--accent);color:#000;border:none;border-radius:var(--radius);
+  font-size:14px;font-weight:600;padding:10px 16px;cursor:pointer;width:100%}
+button:active{opacity:.8}
+button.secondary{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+button.danger{background:var(--red);color:#fff}
+button.small{font-size:12px;padding:6px 10px;width:auto}
+.flex{display:flex;gap:8px}
+.flex>*{flex:1}
+.mt8{margin-top:8px}
+.mt12{margin-top:12px}
+.progress-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;border-radius:3px;background:var(--accent);transition:width .3s}
+.spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--accent);
+  border-radius:50%;animation:spin .8s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;color:var(--muted);padding:32px 16px;font-size:13px}
+.chat-msg{margin-bottom:10px;max-width:88%}
+.chat-msg.user{margin-left:auto;text-align:right}
+.chat-bubble{display:inline-block;padding:8px 11px;border-radius:12px;font-size:13px;line-height:1.5;text-align:left}
+.chat-msg.assistant .chat-bubble{background:var(--surface);border:1px solid var(--border);border-radius:12px 12px 12px 3px}
+.chat-msg.user .chat-bubble{background:var(--accent);color:#000;border-radius:12px 12px 3px 12px}
+.chat-msg.thinking .chat-bubble{color:var(--muted);font-style:italic;font-size:12px}
+.link-cards{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.link-card{background:var(--bg);border:1px solid var(--border);border-radius:6px;
+  padding:8px 10px;text-decoration:none;color:var(--accent);font-size:12px;display:block}
+.link-card:active{opacity:.7}
+#ask-input-area{position:sticky;bottom:0;background:var(--bg);padding:8px 12px;
+  padding-bottom:calc(8px + env(safe-area-inset-bottom));border-top:1px solid var(--border)}
+#ask-input-row{display:flex;gap:8px}
+#ask-input-row input{flex:1}
+#ask-input-row button{width:auto;padding:8px 14px}
+#ask-msgs{padding:12px 12px 4px}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.stat-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px}
+.stat-box .label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.stat-box .value{font-size:22px;font-weight:700;color:var(--accent)}
+.stat-box .sub{font-size:11px;color:var(--muted)}
+.pick-row{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border)}
+.pick-row:last-child{border-bottom:none}
+.pick-label{flex:1;font-size:13px}
+.pick-owner{font-size:11px;color:var(--muted)}
+.trade-side{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px}
+.trade-side h4{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:8px}
+.trade-item{display:flex;align-items:center;gap:6px;padding:4px 0}
+.trade-item .rm{background:none;border:none;color:var(--red);font-size:16px;width:20px;flex-shrink:0;cursor:pointer;padding:0}
+.verdict{text-align:center;padding:12px;border-radius:var(--radius);font-size:14px;font-weight:700;margin-top:10px}
+.verdict.win{background:#1a2d1a;color:var(--green);border:1px solid var(--green)}
+.verdict.loss{background:#2d1a1a;color:var(--red);border:1px solid var(--red)}
+.verdict.fair{background:#2d2410;color:var(--yellow);border:1px solid var(--yellow)}
+.alloc-row{display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid var(--border)}
+.alloc-row:last-child{border-bottom:none}
+.alloc-name{flex:1;font-size:13px;font-weight:500}
+.alloc-select{width:80px;font-size:12px;padding:4px 6px;flex-shrink:0}
+.deadline-banner{background:#2d2410;border:1px solid var(--yellow);border-radius:var(--radius);
+  padding:10px 12px;margin-bottom:12px;font-size:13px;color:var(--yellow)}
+.deadline-banner strong{display:block;font-size:15px}
+.recommend-card{background:var(--surface);border:1px solid var(--green);border-radius:var(--radius);
+  padding:10px 12px;margin-bottom:8px}
+.recommend-card h4{font-size:13px;font-weight:700;color:var(--green);margin-bottom:6px}
+.recommend-card p{font-size:12px;color:var(--muted);line-height:1.5}
+.trending-badge{font-size:10px;padding:2px 5px;border-radius:4px;background:#1a2d1a;color:var(--green)}
+.week-proj{font-size:12px;color:var(--yellow);font-weight:600}
+#login-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100dvh;padding:24px;gap:16px;text-align:center}
+#login-screen h1{font-size:28px;font-weight:800}
+#login-screen p{color:var(--muted);font-size:14px}
+#login-screen .login-box{width:100%;max-width:340px;display:flex;flex-direction:column;gap:10px}
+select option{background:var(--surface)}
+</style>
+</head>
+<body>
 
-SEASON YEAR
+<div id="login-screen">
+  <div style="font-size:48px">🏈</div>
+  <h1>Dynasty HQ</h1>
+  <p>Dynasty intelligence for your Sleeper league</p>
+  <div class="login-box">
+    <div id="login-status" style="color:var(--muted);font-size:13px">Loading your leagues...</div>
+    <div id="login-controls" style="display:none">
+      <input id="lg-select-wrap" style="display:none">
+      <select id="lg-select" style="margin-bottom:8px;display:none"></select>
+      <button id="lg-go-btn" style="display:none" onclick="selectLeague()">Load League</button>
+    </div>
+  </div>
+</div>
 
-Connect to Sleeper →
-Skip — use imported data only
+<div id="app" style="display:none;display:flex;flex-direction:column;height:100dvh">
+  <div id="header">
+    <h1>🏈 Dynasty HQ</h1>
+    <span class="league-name" id="league-label">—</span>
+  </div>
+  <div id="content">
+    <!-- ROSTER -->
+    <div id="panel-roster" class="panel active">
+      <div class="stat-grid" id="roster-stats"></div>
+      <div id="roster-list"></div>
+    </div>
+    <!-- CONTRACTS -->
+    <div id="panel-contracts" class="panel">
+      <div id="deadline-wrap"></div>
+      <div id="alloc-summary" style="margin-bottom:12px"></div>
+      <div id="contracts-list"></div>
+      <div class="mt12">
+        <button class="secondary small" onclick="exportContracts()">Export JSON</button>
+        &nbsp;
+        <button class="secondary small" onclick="importContracts()">Import JSON</button>
+      </div>
+    </div>
+    <!-- WEEK -->
+    <div id="panel-week" class="panel">
+      <div id="week-content"><div class="empty"><div class="spinner"></div><br>Loading week data...</div></div>
+    </div>
+    <!-- DRAFT -->
+    <div id="panel-draft" class="panel">
+      <div id="draft-content"><div class="empty"><div class="spinner"></div><br>Loading draft data...</div></div>
+    </div>
+    <!-- TRADE -->
+    <div id="panel-trade" class="panel">
+      <div id="trade-content">
+        <div style="padding:12px">
+          <div class="flex">
+            <div class="trade-side" id="side-a">
+              <h4>You Give</h4>
+              <div id="give-items"></div>
+              <div class="mt8">
+                <input id="give-search" placeholder="Add player or pick..." oninput="searchTrade('give',this.value)" autocomplete="off">
+                <div id="give-results" class="card" style="display:none;max-height:160px;overflow-y:auto"></div>
+              </div>
+            </div>
+            <div class="trade-side" id="side-b">
+              <h4>You Get</h4>
+              <div id="get-items"></div>
+              <div class="mt8">
+                <input id="get-search" placeholder="Add player or pick..." oninput="searchTrade('get',this.value)" autocomplete="off">
+                <div id="get-results" class="card" style="display:none;max-height:160px;overflow-y:auto"></div>
+              </div>
+            </div>
+          </div>
+          <div id="trade-verdict"></div>
+          <button class="secondary mt8" onclick="clearTrade()">Clear Trade</button>
+        </div>
+      </div>
+    </div>
+    <!-- ASK -->
+    <div id="panel-ask" class="panel" style="padding:0;display:flex;flex-direction:column;min-height:calc(100dvh - var(--header-h) - var(--tab-h))">
+      <div id="ask-msgs"></div>
+      <div style="flex:1"></div>
+      <div id="ask-input-area">
+        <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap" id="ask-quick-btns">
+          <button class="secondary small" onclick="quickAsk('Who should I start this week?')">Start/Sit</button>
+          <button class="secondary small" onclick="quickAsk('Recommend a free agent pickup')">FA Pickup</button>
+          <button class="secondary small" onclick="quickAsk('Recommend a rookie to target')">Rookie</button>
+          <button class="secondary small" onclick="quickAsk('How is my roster doing overall?')">Roster Check</button>
+        </div>
+        <div id="ask-input-row">
+          <input id="ask-q" placeholder="Ask anything about dynasty football..." onkeydown="if(event.key==='Enter')sendAsk()">
+          <button onclick="sendAsk()">Send</button>
+        </div>
+        <div id="ask-provider-row" style="margin-top:6px;display:flex;gap:8px;align-items:center">
+          <span style="font-size:11px;color:var(--muted)">AI:</span>
+          <select id="ai-provider" style="width:auto;font-size:12px;padding:4px 6px" onchange="onProviderChange()">
+            <option value="rule">Built-in (free)</option>
+            <option value="groq">Groq (free API)</option>
+          </select>
+          <input id="ai-key" placeholder="API key..." style="font-size:12px;padding:4px 6px;display:none" oninput="saveKey()">
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="tabs">
+    <div class="tab active" onclick="switchTab('roster')" id="tab-roster"><span>👥</span>Roster</div>
+    <div class="tab" onclick="switchTab('contracts')" id="tab-contracts"><span>📝</span>Contracts</div>
+    <div class="tab" onclick="switchTab('week')" id="tab-week"><span>📅</span>Week</div>
+    <div class="tab" onclick="switchTab('draft')" id="tab-draft"><span>📋</span>Draft</div>
+    <div class="tab" onclick="switchTab('trade')" id="tab-trade"><span>🔄</span>Trade</div>
+    <div class="tab" onclick="switchTab('ask')" id="tab-ask"><span>🤖</span>Ask</div>
+  </div>
+</div>
 
-Settings
-✕
-FREE AI (GROQ) — NO CREDIT CARD
-Sign up free at console.groq.com → create an API key → paste below. Uses Llama 3.3 70B. No credit card required.
-GROQ API KEY (FREE)
+<script>
+'use strict';
+// ── CONSTANTS ──────────────────────────────────────────────────────────────
+const OWNER_USERNAME='My Ball Zach Ertz';
+const SLEEPER='https://api.sleeper.app/v1';
+const POSITIONS=['QB','RB','WR','TE','K','DST'];
 
-Llama 3.3 70B
-Llama 3.1 8B (faster)
-PREMIUM AI (ANTHROPIC CLAUDE) — OPTIONAL
-CLAUDE API KEY (PAID)
+const SEED={
+  active:[
+    {name:'Rashee Rice',pos:'WR',years:3,expiry:2028,taxi:false},
+    {name:'Joe Burrow',pos:'QB',years:1,expiry:2026,taxi:false},
+    {name:'Devonta Smith',pos:'WR',years:1,expiry:2026,taxi:false},
+    {name:'Isiah Pacheco',pos:'RB',years:1,expiry:2026,taxi:false},
+    {name:'Jaylin Noel',pos:'WR',years:1,expiry:2026,taxi:true},
+    {name:'Terry McLaurin',pos:'WR',years:1,expiry:2026,taxi:false},
+    {name:'Chris Bell',pos:'WR',years:1,expiry:2026,taxi:false},
+    {name:'Desmond Reid',pos:'RB',years:1,expiry:2026,taxi:false},
+    {name:'Skyler Bell',pos:'WR',years:1,expiry:2026,taxi:false},
+    {name:'Kaytron Allen',pos:'RB',years:1,expiry:2026,taxi:false},
+    {name:'Kaelon Black',pos:'RB',years:1,expiry:2026,taxi:false},
+    {name:'Drew Allar',pos:'QB',years:1,expiry:2026,taxi:false},
+    {name:'Isaac Tesla',pos:'WR',years:1,expiry:2026,taxi:true},
+  ],
+  needs:[
+    {name:'Christian Watson',pos:'WR'},{name:'David Njoku',pos:'TE'},
+    {name:'Cam Ward',pos:'QB'},{name:'Kaleb Johnson',pos:'RB'},
+    {name:'Tre Harris',pos:'WR'},{name:'Rashid Shaheed',pos:'WR'},
+    {name:'Tucker Kraft',pos:'TE'},{name:'Juwan Johnson',pos:'TE'},
+    {name:'Theo Johnson',pos:'TE'},{name:'Darius Slayton',pos:'WR'},
+    {name:'Kendrick Bourne',pos:'WR'},{name:'Keenan Allen',pos:'WR'},
+    {name:'Tre Tucker',pos:'WR'},{name:'Devin Singletary',pos:'RB'},
+    {name:'Dallas Cowboys',pos:'DST'},{name:'Cade Otton',pos:'TE'},
+    {name:'Parker Washington',pos:'WR'},{name:'Tyler Algier',pos:'RB'},
+  ],
+  inventory:{'4yr':1,'3yr':1,'2yr':3,'1yr':1,'xfer':1},
+  allocations:{},
+  deadline:'2026-06-29'
+};
 
-CONTRACT DEADLINE
-DEADLINE DATE
-DATA
-Clear player cache Reset all contract data
-Dynasty HQ v3 · Read-only Sleeper API · No paid keys required
+// ── DYNASTY VALUES ─────────────────────────────────────────────────────────
+const DV={
+  'Patrick Mahomes':9800,'Josh Allen':9600,'Lamar Jackson':9500,'Joe Burrow':8800,
+  'Jalen Hurts':8600,'Jayden Daniels':8400,'Jordan Love':8200,'Caleb Williams':8000,
+  'Bo Nix':7500,'Cam Ward':7000,'Drew Allar':5500,
+  'Christian McCaffrey':8500,'Breece Hall':8800,'Bijan Robinson':9000,
+  'Jahmyr Gibbs':9200,'De\'Von Achane':8600,'Jonathan Taylor':7800,
+  'Isiah Pacheco':6800,'Kyren Williams':7200,'Kaytron Allen':6000,
+  'Kaelon Black':4800,'Desmond Reid':4500,'Kaleb Johnson':6500,'Tyler Algier':4500,
+  'Justin Jefferson':9500,'CeeDee Lamb':9400,'Ja\'Marr Chase':9600,
+  'Amon-Ra St. Brown':8800,'Puka Nacua':8000,'Rashee Rice':8600,
+  'Devonta Smith':6800,'Terry McLaurin':5800,'Jaylin Noel':5800,
+  'Chris Bell':4200,'Skyler Bell':4800,'Isaac Tesla':4500,
+  'Tre Harris':6200,'Rashid Shaheed':5500,'Darius Slayton':4200,
+  'Kendrick Bourne':3200,'Keenan Allen':3500,'Tre Tucker':4500,
+  'Parker Washington':4800,'Christian Watson':5500,
+  'Sam LaPorta':7500,'Trey McBride':8200,'David Njoku':5500,
+  'Tucker Kraft':5800,'Juwan Johnson':4000,'Theo Johnson':4200,
+  'Cade Otton':3800,
+  'Dallas Cowboys':2500,'Devin Singletary':3800,
+  '2025 1st':7000,'2025 2nd':4500,'2025 3rd':2500,
+  '2026 1st':6500,'2026 2nd':4000,'2026 3rd':2000,
+  '2027 1st':6000,'2027 2nd':3500,
+};
+function getDV(name){
+  if(!name)return 0;
+  const n=name.trim();
+  if(DV[n])return DV[n];
+  const lc=n.toLowerCase();
+  for(const k of Object.keys(DV)){if(k.toLowerCase()===lc)return DV[k];}
+  for(const k of Object.keys(DV)){
+    const kw=k.toLowerCase().split(' ');
+    if(kw.length>=2 && lc.includes(kw[kw.length-1]) && lc.includes(kw[0]))return DV[k];
+  }
+  return 0;
+}
+function valLabel(v){
+  if(v>=8000)return{cls:'badge-green',t:'Elite'};
+  if(v>=6000)return{cls:'badge-green',t:'Star'};
+  if(v>=4000)return{cls:'badge-yellow',t:'Starter'};
+  if(v>=2000)return{cls:'badge-yellow',t:'Depth'};
+  return{cls:'badge-red',t:'Low'};
+}
 
-Edit Contract
-✕
-SALARY
+// ── STORAGE ────────────────────────────────────────────────────────────────
+function load(k,d=''){try{const v=localStorage.getItem(k);return v!==null?v:d;}catch{return d;}}
+function save(k,v){try{localStorage.setItem(k,v);}catch{}}
+function loadLD(){try{const v=localStorage.getItem('dhq_ld');return v?JSON.parse(v):JSON.parse(JSON.stringify(SEED));}catch{return JSON.parse(JSON.stringify(SEED));}}
+function saveLD(d){try{localStorage.setItem('dhq_ld',JSON.stringify(d));}catch{}}
 
-YEARS REMAINING
+// ── APP STATE ──────────────────────────────────────────────────────────────
+let G={user:null,leagues:[],league:null,rosters:[],myRoster:null,picks:[],players:{},
+       season:'',userId:'',ld:loadLD()};
+let W={state:null,proj:{},trending:[],loaded:false,loading:false};
+let tradeGive=[],tradeGet=[];
 
-FINAL CONTRACT YEAR
+// ── INIT ───────────────────────────────────────────────────────────────────
+(function init(){
+  if(!localStorage.getItem('dhq_ld'))saveLD(SEED);
+  G.ld=loadLD();
+  const yr=new Date().getFullYear();
+  const m=new Date().getMonth();
+  G.season=load('dhq_season',String(m<8?yr-1:yr));
+  save('dhq_user',OWNER_USERNAME);
+  const savedLg=load('dhq_saved_lg','');
+  if(savedLg){autoRestoreLeague(savedLg,G.season);}
+  else{doLogin();}
+})();
 
-NOTES (TAXI, FRANCHISE TAG, ETC.)
-Save Remove Contract
+async function autoRestoreLeague(lgId,season){
+  setLoginStatus('Signing in as '+OWNER_USERNAME+'...');
+  try{
+    const user=await api('/user/'+OWNER_USERNAME);
+    G.user=user; G.userId=user.user_id;
+    const leagues=await api('/user/'+user.user_id+'/leagues/nfl/'+season);
+    G.leagues=leagues||[];
+    const lg=G.leagues.find(l=>l.league_id===lgId);
+    if(lg){await loadLeague(lg);}
+    else{showLeaguePicker();}
+  }catch(e){setLoginStatus('Error: '+e.message);showLeaguePicker();}
+}
 
-Import Contract Data
-✕
-Paste from Excel/Sheets or type directly. The app reads three sections — separate them with a blank line or a header like shown below.
-ACTIVE CONTRACTS (NAME, POSITION, YEARS, EXPIRYYEAR [, TAXI])
-NEEDS CONTRACT (NAME, POSITION)
-CONTRACT INVENTORY (TYPE, COUNT) — USE 4YR/3YR/2YR/1YR/XFER
-Import Data
+async function doLogin(){
+  setLoginStatus('Signing in as '+OWNER_USERNAME+'...');
+  try{
+    const user=await api('/user/'+OWNER_USERNAME);
+    G.user=user; G.userId=user.user_id;
+    const leagues=await api('/user/'+user.user_id+'/leagues/nfl/'+G.season);
+    G.leagues=leagues||[];
+    if(G.leagues.length===1){await loadLeague(G.leagues[0]);}
+    else{showLeaguePicker();}
+  }catch(e){
+    setLoginStatus('Could not load Sleeper data. Check connection.');
+    document.getElementById('login-controls').style.display='block';
+    document.getElementById('login-status').textContent='Tap below to retry';
+  }
+}
+
+function setLoginStatus(t){document.getElementById('login-status').textContent=t;}
+
+function showLeaguePicker(){
+  const sel=document.getElementById('lg-select');
+  sel.innerHTML='<option value="">-- Select a league --</option>';
+  G.leagues.forEach(l=>{
+    const o=document.createElement('option');
+    o.value=l.league_id; o.textContent=l.name;
+    sel.appendChild(o);
+  });
+  sel.style.display='block';
+  document.getElementById('lg-go-btn').style.display='block';
+  document.getElementById('login-controls').style.display='block';
+  setLoginStatus('Choose your league:');
+}
+
+async function selectLeague(){
+  const id=document.getElementById('lg-select').value;
+  if(!id)return;
+  const lg=G.leagues.find(l=>l.league_id===id);
+  if(lg)await loadLeague(lg);
+}
+
+async function loadLeague(lg){
+  setLoginStatus('Loading '+lg.name+'...');
+  G.league=lg;
+  save('dhq_saved_lg',lg.league_id);
+  try{
+    const [rosters,picks]=await Promise.all([
+      api('/league/'+lg.league_id+'/rosters'),
+      api('/league/'+lg.league_id+'/traded_picks'),
+    ]);
+    G.rosters=rosters||[];
+    G.picks=picks||[];
+    // find my roster
+    G.myRoster=G.rosters.find(r=>r.owner_id===G.userId)||G.rosters[0];
+    // load players (cached)
+    await loadPlayers();
+    showApp(lg.name);
+  }catch(e){setLoginStatus('Error loading league: '+e.message);}
+}
+
+async function loadPlayers(){
+  const cached=load('dhq_players_ts','');
+  const age=Date.now()-Number(cached||0);
+  if(cached && age<86400000){
+    try{G.players=JSON.parse(localStorage.getItem('dhq_players')||'{}');return;}catch{}
+  }
+  try{
+    const p=await api('/players/nfl');
+    G.players=p||{};
+    localStorage.setItem('dhq_players',JSON.stringify(p));
+    save('dhq_players_ts',String(Date.now()));
+  }catch{}
+}
+
+function showApp(lgName){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  document.getElementById('league-label').textContent=lgName;
+  renderRoster();
+  renderContracts();
+  // restore AI key
+  const prov=load('dhq_provider','rule');
+  document.getElementById('ai-provider').value=prov;
+  const key=load('dhq_key','');
+  if(key)document.getElementById('ai-key').value=key;
+  onProviderChange();
+  // welcome message
+  appendMsg('assistant','Hi! I\'m your Dynasty HQ assistant. Ask me anything about your roster, dynasty strategy, sit/start decisions, free agent pickups, or rookies to target. I know your team!');
+}
+
+// ── API HELPERS ────────────────────────────────────────────────────────────
+async function api(path){
+  const r=await fetch(SLEEPER+path);
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  return r.json();
+}
+
+// ── TAB SWITCHING ──────────────────────────────────────────────────────────
+let activeTab='roster';
+function switchTab(t){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(tb=>tb.classList.remove('active'));
+  document.getElementById('panel-'+t).classList.add('active');
+  document.getElementById('tab-'+t).classList.add('active');
+  activeTab=t;
+  if((t==='week')&&!W.loaded)loadWeekData();
+  if((t==='draft'||t==='trade')&&!G._draftLoaded)loadDraftData();
+}
+
+// ── ROSTER TAB ─────────────────────────────────────────────────────────────
+function renderRoster(){
+  if(!G.myRoster)return;
+  const roster=G.myRoster;
+  const pids=(roster.players||[]);
+  const taxiIds=new Set(roster.taxi||[]);
+  const starters=new Set(roster.starters||[]);
+
+  // collect player objects
+  const players=pids.map(id=>{
+    const p=G.players[id]||{};
+    return{id,name:fullName(p),pos:p.position||'?',age:p.age||0,
+      dv:getDV(fullName(p)),team:p.team||'FA',taxi:taxiIds.has(id)};
+  }).sort((a,b)=>{
+    const po=['QB','RB','WR','TE','K','DST','?'];
+    return po.indexOf(a.pos)-po.indexOf(b.pos)||(b.dv-a.dv);
+  });
+
+  // stats
+  const totalVal=players.reduce((s,p)=>s+p.dv,0);
+  const avgAge=players.length?Math.round(players.reduce((s,p)=>s+(p.age||25),0)/players.length):0;
+  const expiring=G.ld.active.filter(c=>c.expiry<=new Date().getFullYear()+1).length;
+
+  const sg=document.getElementById('roster-stats');
+  sg.innerHTML=`
+    <div class="stat-box"><div class="label">Total Value</div><div class="value">${(totalVal/1000).toFixed(1)}k</div><div class="sub">Dynasty pts</div></div>
+    <div class="stat-box"><div class="label">Avg Age</div><div class="value">${avgAge}</div><div class="sub">years</div></div>
+    <div class="stat-box"><div class="label">Players</div><div class="value">${players.length}</div><div class="sub">on roster</div></div>
+    <div class="stat-box"><div class="label">Expiring</div><div class="value">${expiring}</div><div class="sub">contracts</div></div>
+  `;
+
+  // group by pos
+  const groups={};
+  players.forEach(p=>{
+    if(!groups[p.pos])groups[p.pos]=[]; groups[p.pos].push(p);
+  });
+
+  let html='';
+  const posOrder=['QB','RB','WR','TE','K','DST','?'];
+  posOrder.forEach(pos=>{
+    if(!groups[pos])return;
+    html+=`<div class="section-label">${pos}</div><div class="card">`;
+    groups[pos].forEach(p=>{
+      const vl=valLabel(p.dv);
+      const contract=G.ld.active.find(c=>normName(c.name)===normName(p.name));
+      const cBadge=contract?`<span class="badge badge-yellow">${contract.expiry}</span>`:'';
+      const taxiBadge=p.taxi?'<span class="badge badge-taxi">TAXI</span>':'';
+      html+=`<div class="player-row">
+        <span class="badge badge-${pos.toLowerCase()}">${pos}</span>
+        <div style="flex:1">
+          <div class="player-name">${p.name} <span style="font-size:11px;color:var(--muted)">${p.team}</span></div>
+          <div class="player-meta">${p.age?p.age+'yo ':''}</div>
+        </div>
+        ${taxiBadge}${cBadge}
+        <div class="val">${p.dv||'—'}</div>
+      </div>`;
+    });
+    html+='</div>';
+  });
+
+  document.getElementById('roster-list').innerHTML=html||'<div class="empty">No players found</div>';
+}
+
+function fullName(p){
+  if(!p||(!p.first_name&&!p.last_name))return p&&p.full_name?p.full_name:'Unknown';
+  if(p.full_name)return p.full_name;
+  return((p.first_name||'')+' '+(p.last_name||'')).trim()||'Unknown';
+}
+function normName(n){return(n||'').toLowerCase().replace(/[^a-z]/g,'');}
+
+// ── CONTRACTS TAB ──────────────────────────────────────────────────────────
+function renderContracts(){
+  const ld=G.ld;
+  // deadline
+  const dl=document.getElementById('deadline-wrap');
+  if(ld.deadline){
+    const days=Math.ceil((new Date(ld.deadline)-Date.now())/86400000);
+    dl.innerHTML=`<div class="deadline-banner"><strong>⏰ Contract Deadline</strong>${ld.deadline} — ${days>0?days+' days left':'PASSED'}</div>`;
+  }
+
+  // slot summary
+  const inv=ld.inventory||{};
+  const alloc=ld.allocations||{};
+  const used={'4yr':0,'3yr':0,'2yr':0,'1yr':0,'xfer':0};
+  Object.values(alloc).forEach(v=>{if(used[v]!==undefined)used[v]++;});
+  const sumHtml=Object.keys(inv).map(k=>{
+    const avail=(inv[k]||0)-( used[k]||0);
+    const pct=inv[k]?Math.round(used[k]/inv[k]*100):0;
+    return`<div class="card-body" style="padding:8px 12px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span style="font-weight:600">${k} slots</span>
+        <span style="color:var(--muted);font-size:12px">${used[k]||0}/${inv[k]} used · ${avail} left</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+  document.getElementById('alloc-summary').innerHTML=`<div class="card">${sumHtml}</div>`;
+
+  // contract list
+  let html='<div class="section-label">Active Contracts</div><div class="card">';
+  if(!ld.active||!ld.active.length){html+='<div class="empty">No contracts set</div>';}
+  else{
+    ld.active.forEach((c,i)=>{
+      const slots=['4yr','3yr','2yr','1yr','xfer','—'];
+      const cur=alloc[normName(c.name)]||'—';
+      html+=`<div class="alloc-row">
+        <span class="badge badge-${(c.pos||'').toLowerCase()}">${c.pos||'?'}</span>
+        <span class="alloc-name">${c.name}${c.taxi?' <span class="badge badge-taxi">TAXI</span>':''}</span>
+        <span style="font-size:11px;color:var(--muted);margin-right:4px">${c.years}yr·${c.expiry}</span>
+        <select class="alloc-select" onchange="setAlloc('${normName(c.name)}',this.value)">
+          ${slots.map(s=>`<option value="${s}"${cur===s?' selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>`;
+    });
+  }
+  html+='</div>';
+
+  // needs
+  if(ld.needs&&ld.needs.length){
+    html+='<div class="section-label">Targets / Needs</div><div class="card">';
+    ld.needs.forEach(c=>{
+      const dv=getDV(c.name);
+      const vl=valLabel(dv);
+      html+=`<div class="player-row">
+        <span class="badge badge-${(c.pos||'').toLowerCase()}">${c.pos||'?'}</span>
+        <span class="player-name">${c.name}</span>
+        ${dv?`<span class="badge ${vl.cls}">${dv}</span>`:''}
+      </div>`;
+    });
+    html+='</div>';
+  }
+
+  document.getElementById('contracts-list').innerHTML=html;
+}
+
+function setAlloc(key,val){
+  const ld=G.ld;
+  if(!ld.allocations)ld.allocations={};
+  if(val==='—')delete ld.allocations[key];
+  else ld.allocations[key]=val;
+  saveLD(ld);
+  renderContracts();
+}
+
+function exportContracts(){
+  const s=JSON.stringify(G.ld,null,2);
+  const b=new Blob([s],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(b); a.download='dynasty-hq-contracts.json'; a.click();
+}
+function importContracts(){
+  const f=document.createElement('input');
+  f.type='file'; f.accept='.json';
+  f.onchange=e=>{
+    const file=e.target.files[0]; if(!file)return;
+    const r=new FileReader();
+    r.onload=ev=>{
+      try{G.ld=JSON.parse(ev.target.result);saveLD(G.ld);renderContracts();alert('Imported!');}
+      catch{alert('Invalid JSON file');}
+    };
+    r.readAsText(file);
+  };
+  f.click();
+}
+
+// ── WEEK TAB ───────────────────────────────────────────────────────────────
+async function loadWeekData(){
+  if(W.loading)return;
+  W.loading=true;
+  try{
+    const [state,trending]=await Promise.all([
+      api('/state/nfl'),
+      api('/players/nfl/trending/add?lookback_hours=24&limit=30'),
+    ]);
+    W.state=state;
+    W.trending=trending||[];
+    // Try to get projections
+    const week=state.display_week||state.week||1;
+    const season=state.season||G.season;
+    try{
+      const proj=await api('/projections/nfl/regular/${season}/${week}');
+      W.proj=proj||{};
+    }catch{W.proj={};}
+    W.loaded=true;
+    renderWeek();
+  }catch(e){
+    document.getElementById('week-content').innerHTML=`<div class="empty">Could not load week data.<br><small>${e.message}</small></div>`;
+  }
+  W.loading=false;
+}
+
+function renderWeek(){
+  const state=W.state||{};
+  const week=state.display_week||state.week||'?';
+  const season=state.season||G.season;
+
+  // build my roster player list
+  const myPids=new Set(G.myRoster?G.myRoster.players||[]:[]);
+  const taxiIds=new Set(G.myRoster?G.myRoster.taxi||[]:[]);
+
+  // sit/start: top projected from my roster
+  const myProj=[];
+  myPids.forEach(id=>{
+    if(taxiIds.has(id))return;
+    const p=G.players[id]||{};
+    const proj=W.proj[id]||{};
+    const pts=proj.pts_ppr||proj.pts_half_ppr||proj.pts_std||0;
+    myProj.push({id,name:fullName(p),pos:p.position||'?',team:p.team||'FA',pts,injured:p.injury_status});
+  });
+  myProj.sort((a,b)=>b.pts-a.pts);
+
+  // trending FAs (not on my roster)
+  const trendFa=W.trending.filter(t=>!myPids.has(t.player_id)).slice(0,10);
+
+  let html=`<div style="padding:12px">
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-header"><h3>📅 Week ${week} · ${season}</h3></div>
+    </div>`;
+
+  // Sit/Start
+  html+=`<div class="section-label">Sit/Start — My Starters</div><div class="card">`;
+  if(!myProj.length){html+='<div class="empty">No roster data</div>';}
+  else{
+    const starters=myProj.filter(p=>['QB','RB','WR','TE'].includes(p.pos)).slice(0,12);
+    starters.forEach(p=>{
+      const rec=p.pts>=15?'🟢 Start':p.pts>=8?'🟡 Flex':p.pts<5&&p.pts>0?'🔴 Sit':'—';
+      const inj=p.injured?`<span style="color:var(--red);font-size:11px"> ⚠️${p.injured}</span>`:'';
+      html+=`<div class="player-row">
+        <span class="badge badge-${p.pos.toLowerCase()}">${p.pos}</span>
+        <div style="flex:1"><div class="player-name">${p.name}${inj}</div>
+          <div class="player-meta">${p.team}</div></div>
+        ${p.pts?`<span class="week-proj">${p.pts.toFixed(1)} pts</span>`:''}
+        <span style="font-size:12px;margin-left:8px">${rec}</span>
+      </div>`;
+    });
+  }
+  html+='</div>';
+
+  // Trending FAs
+  html+=`<div class="section-label">🔥 Trending Free Agents</div><div class="card">`;
+  if(!trendFa.length){html+='<div class="empty">No trending data</div>';}
+  else{
+    trendFa.forEach(t=>{
+      const p=G.players[t.player_id]||{};
+      const dv=getDV(fullName(p));
+      html+=`<div class="player-row">
+        <span class="badge badge-${(p.position||'').toLowerCase()}">${p.position||'?'}</span>
+        <div style="flex:1"><div class="player-name">${fullName(p)}</div>
+          <div class="player-meta">${p.team||'FA'} · +${t.count} adds</div></div>
+        <span class="trending-badge">+${t.count}</span>
+        ${dv?`<span class="val" style="margin-left:6px">${dv}</span>`:''}
+      </div>`;
+    });
+  }
+  html+='</div>';
+
+  // Rookie recommendations
+  const rookieTargets=G.ld.needs.filter(n=>['WR','RB','QB','TE'].includes(n.pos)).slice(0,5);
+  if(rookieTargets.length){
+    html+=`<div class="section-label">🎯 Rookie / FA Targets</div>`;
+    rookieTargets.forEach(n=>{
+      const dv=getDV(n.name);
+      html+=`<div class="recommend-card">
+        <h4>${n.name} · ${n.pos}</h4>
+        <p>Dynasty value: <strong>${dv||'?'}</strong> · ${valLabel(dv).t} — Listed as a team need. Target via trade or waiver.</p>
+      </div>`;
+    });
+  }
+
+  html+='</div>';
+  document.getElementById('week-content').innerHTML=html;
+}
+
+// ── DRAFT TAB ──────────────────────────────────────────────────────────────
+async function loadDraftData(){
+  G._draftLoaded=true;
+  try{
+    // rosters already loaded; build pick list from traded picks
+    renderDraft();
+  }catch(e){
+    document.getElementById('draft-content').innerHTML=`<div class="empty">${e.message}</div>`;
+  }
+}
+
+function renderDraft(){
+  const picks=G.picks||[];
+  // picks the owner has traded away (owned_by != original_owner and current_owner != my id)
+  // build roster owner map
+  const ownerMap={};
+  G.rosters.forEach(r=>{ownerMap[r.roster_id]=r.owner_id;});
+  // picks I currently own
+  const myRosterId=G.myRoster?G.myRoster.roster_id:null;
+  const myPicks=picks.filter(p=>p.owner_id===G.userId||p.roster_id===myRosterId);
+  const theirPicks=picks.filter(p=>p.previous_owner_id===G.userId&&p.owner_id!==G.userId);
+
+  let html=`<div style="padding:12px">`;
+  html+=`<div class="section-label">Picks I Own</div><div class="card">`;
+  if(!myPicks.length)html+='<div class="empty">No traded picks on your side</div>';
+  myPicks.forEach(p=>{
+    html+=`<div class="pick-row">
+      <div style="flex:1"><div class="pick-label">${p.season} Round ${p.round} ${p.roster_id===myRosterId?'(own)':'(from trade)'}</div>
+      <div class="pick-owner">Originally: roster ${p.roster_id}</div></div>
+      <span class="val">${getDV(p.season+' '+['1st','2nd','3rd'][p.round-1])||'?'}</span>
+    </div>`;
+  });
+  html+='</div>';
+
+  html+=`<div class="section-label">Picks I've Traded Away</div><div class="card">`;
+  if(!theirPicks.length)html+='<div class="empty">None</div>';
+  theirPicks.forEach(p=>{
+    html+=`<div class="pick-row">
+      <div class="pick-label">${p.season} Round ${p.round}</div>
+      <span style="font-size:11px;color:var(--red)">traded away</span>
+    </div>`;
+  });
+  html+='</div></div>';
+
+  document.getElementById('draft-content').innerHTML=html;
+}
+
+// ── TRADE TAB ─────────────────────────────────────────────────────────────
+function searchTrade(side,q){
+  const resEl=document.getElementById(side==='give'?'give-results':'get-results');
+  q=q.trim();
+  if(q.length<2){resEl.style.display='none';return;}
+  // search players
+  const matches=[];
+  // search picks
+  const pickYears=['2025','2026','2027'];
+  const rounds=['1st','2nd','3rd'];
+  pickYears.forEach(yr=>rounds.forEach(r=>{
+    const label=yr+' '+r;
+    if(label.toLowerCase().includes(q.toLowerCase()))matches.push({type:'pick',name:label,dv:getDV(label)});
+  }));
+  // search players
+  Object.entries(G.players).forEach(([id,p])=>{
+    const n=fullName(p);
+    if(n.toLowerCase().includes(q.toLowerCase())){
+      matches.push({type:'player',name:n,pos:p.position||'?',dv:getDV(n)});
+    }
+  });
+  // also search DV keys
+  Object.keys(DV).forEach(k=>{
+    if(k.toLowerCase().includes(q.toLowerCase())&&!matches.find(m=>m.name===k)){
+      matches.push({type:'player',name:k,dv:DV[k]});
+    }
+  });
+  matches.sort((a,b)=>b.dv-a.dv);
+  const top=matches.slice(0,12);
+  if(!top.length){resEl.style.display='none';return;}
+  resEl.style.display='block';
+  resEl.innerHTML=top.map(m=>`
+    <div class="player-row" style="cursor:pointer" onclick="addToTrade('${side}','${m.name.replace(/'/g,"\\'")}',${m.dv})">
+      <span class="badge badge-${(m.pos||'pick').toLowerCase()}">${m.pos||'Pick'}</span>
+      <span class="player-name">${m.name}</span>
+      <span class="val">${m.dv||'?'}</span>
+    </div>`).join('');
+}
+
+function addToTrade(side,name,dv){
+  const arr=side==='give'?tradeGive:tradeGet;
+  if(!arr.find(i=>i.name===name))arr.push({name,dv:Number(dv)});
+  document.getElementById(side==='give'?'give-search':'get-search').value='';
+  document.getElementById(side==='give'?'give-results':'get-results').style.display='none';
+  renderTradeItems();
+}
+
+function renderTradeItems(){
+  ['give','get'].forEach(side=>{
+    const arr=side==='give'?tradeGive:tradeGet;
+    const el=document.getElementById(side+'-items');
+    el.innerHTML=arr.map((item,i)=>`
+      <div class="trade-item">
+        <button class="rm" onclick="removeTradeItem('${side}',${i})">×</button>
+        <div style="flex:1;font-size:13px">${item.name}</div>
+        <span class="val">${item.dv||'?'}</span>
+      </div>`).join('');
+  });
+  evalTrade();
+}
+
+function removeTradeItem(side,i){
+  const arr=side==='give'?tradeGive:tradeGet;
+  arr.splice(i,1); renderTradeItems();
+}
+
+function evalTrade(){
+  const giveTotal=tradeGive.reduce((s,i)=>s+i.dv,0);
+  const getTotal=tradeGet.reduce((s,i)=>s+i.dv,0);
+  const el=document.getElementById('trade-verdict');
+  if(!tradeGive.length&&!tradeGet.length){el.innerHTML='';return;}
+  const diff=getTotal-giveTotal;
+  const pct=giveTotal?Math.round(Math.abs(diff)/giveTotal*100):100;
+  let cls='fair',msg='';
+  if(diff>1000){cls='win';msg=`✅ You WIN this trade (+${diff} value, +${pct}%)`;}
+  else if(diff<-1000){cls='loss';msg=`❌ You LOSE this trade (${diff} value, -${pct}%)`;}
+  else{msg=`⚖️ Fair trade (diff: ${diff>0?'+':''}${diff})`;}
+  el.innerHTML=`<div class="verdict ${cls}">${msg}<br>
+    <small>Give: ${giveTotal} · Get: ${getTotal}</small></div>`;
+}
+
+function clearTrade(){
+  tradeGive=[];tradeGet=[];renderTradeItems();
+  document.getElementById('trade-verdict').innerHTML='';
+}
+
+// ── ASK TAB ────────────────────────────────────────────────────────────────
+const LINKS={
+  values:['https://keeptradecut.com/dynasty-rankings','https://dynastynerds.com/rankings/','https://www.fantasypros.com/nfl/rankings/dynasty-overall.php'],
+  rookies:['https://dynastynerds.com/dynasty-rookie-rankings/','https://keeptradecut.com/dynasty-rankings?filters=rookies','https://www.fantasypros.com/nfl/rankings/rookies.php'],
+  trade:['https://keeptradecut.com/dynasty-trade-calculator','https://dynastyleaguefootball.com/trade-analyzer/','https://www.dynastyleaguefootball.com/dynasty-101/'],
+  strategy:['https://www.reddit.com/r/DynastyFF/wiki/index','https://dynastyleaguefootball.com/dynasty-101/','https://dynastynerds.com/dynasty-football-101/'],
+  waiver:['https://www.fantasypros.com/nfl/waiver-wire-assistant.php','https://dynastynerds.com/free-agent-rankings/','https://keeptradecut.com/free-agent-rankings'],
+  contract:['https://www.reddit.com/r/DynastyFF/','https://dynastyleaguefootball.com/','https://dynastynerds.com/'],
+  general:['https://www.reddit.com/r/DynastyFF/','https://dynastyleaguefootball.com/dynasty-101/','https://keeptradecut.com/']
+};
+const LINK_LABELS={
+  'keeptradecut.com/dynasty-rankings':'KTC Dynasty Rankings',
+  'dynastynerds.com/rankings/':'Dynasty Nerds Rankings',
+  'fantasypros.com/nfl/rankings/dynasty-overall.php':'FantasyPros Dynasty Rankings',
+  'dynastynerds.com/dynasty-rookie-rankings/':'Dynasty Nerds Rookie Rankings',
+  'keeptradecut.com/dynasty-rankings?filters=rookies':'KTC Rookie Rankings',
+  'fantasypros.com/nfl/rankings/rookies.php':'FantasyPros Rookie Rankings',
+  'keeptradecut.com/dynasty-trade-calculator':'KTC Trade Calculator',
+  'dynastyleaguefootball.com/trade-analyzer/':'DLF Trade Analyzer',
+  'dynastyleaguefootball.com/dynasty-101/':'DLF Dynasty 101 Guide',
+  'reddit.com/r/DynastyFF/wiki/index':'r/DynastyFF Wiki',
+  'dynastynerds.com/dynasty-football-101/':'Dynasty Nerds 101',
+  'fantasypros.com/nfl/waiver-wire-assistant.php':'FantasyPros Waiver Wire',
+  'dynastynerds.com/free-agent-rankings/':'Dynasty Nerds FA Rankings',
+  'keeptradecut.com/free-agent-rankings':'KTC Free Agent Rankings',
+  'reddit.com/r/DynastyFF/':'r/DynastyFF Community',
+  'dynastyleaguefootball.com/':'Dynasty League Football',
+  'dynastynerds.com/':'Dynasty Nerds',
+  'keeptradecut.com/':'KeepTradeCut'
+};
+function linkLabel(url){
+  for(const [k,v] of Object.entries(LINK_LABELS)){if(url.includes(k))return v;}
+  return url;
+}
+function getLinks(topic){
+  const urls=LINKS[topic]||LINKS.general;
+  return urls.map(u=>({label:linkLabel(u),url:u}));
+}
+
+function myRosterContext(){
+  const ld=G.ld;
+  const active=(ld.active||[]).map(c=>`${c.name}(${c.pos},expires ${c.expiry}${c.taxi?' TAXI':''})`).join(', ');
+  const needs=(ld.needs||[]).map(n=>`${n.name}(${n.pos})`).join(', ');
+  const pids=G.myRoster?G.myRoster.players||[]:[];
+  const rosterNames=pids.slice(0,20).map(id=>fullName(G.players[id]||{})).filter(n=>n!=='Unknown').join(', ');
+  return `Owner: ${OWNER_USERNAME}. Active contracts: ${active||'none'}. Team needs: ${needs||'none'}. Sleeper roster (first 20): ${rosterNames||'not loaded'}.`;
+}
+
+const DYNASTY_FAQ=[
+  {pat:/start|sit|lineup|who.*start|bench/i,topic:'waiver',
+   fn(q){
+     const ctx=myRosterContext();
+     const myProj=[];
+     if(G.myRoster){
+       (G.myRoster.players||[]).forEach(id=>{
+         const p=G.players[id]||{};
+         const proj=W.proj[id]||{};
+         const pts=proj.pts_ppr||0;
+         myProj.push({name:fullName(p),pos:p.position||'?',pts});
+       });
+     }
+     myProj.sort((a,b)=>b.pts-a.pts);
+     const starters=myProj.filter(p=>['QB','RB','WR','TE'].includes(p.pos)).slice(0,8);
+     if(starters.length&&starters[0].pts>0){
+       const starts=starters.filter(p=>p.pts>=10).map(p=>`${p.name}(${p.pts.toFixed(1)})`).join(', ');
+       const sits=starters.filter(p=>p.pts<8&&p.pts>0).map(p=>`${p.name}(${p.pts.toFixed(1)})`).join(', ');
+       return{text:`Based on current projections from your roster:\n\n▶️ START: ${starts||'check manually'}\n⛔ CONSIDER SITTING: ${sits||'none flagged'}\n\nAlways verify injury reports and Vegas lines before locking your lineup.`,links:getLinks('waiver')};
+     }
+     return{text:`In dynasty, sit/start decisions depend on matchups, injury reports, and snap counts. For your team (${OWNER_USERNAME}), check the Week tab for current projections. Generally: start your studs every week, bench injured or bye-week players. Check FantasyPros or Sleeper's own projections for week-specific advice.`,links:getLinks('waiver')};
+   }},
+  {pat:/free agent|pickup|waiver|add|fa pick/i,topic:'waiver',
+   fn(q){
+     const trending=W.trending||[];
+     const myPids=new Set(G.myRoster?G.myRoster.players||[]:[]);
+     const fas=trending.filter(t=>!myPids.has(t.player_id)).slice(0,5);
+     if(fas.length){
+       const names=fas.map(t=>{const p=G.players[t.player_id]||{};return`${fullName(p)} (+${t.count} adds)`;}).join(', ');
+       return{text:`🔥 Trending free agents right now: ${names}\n\nIn dynasty, prioritize FAs with youth, upside, and good depth chart situations. An older, higher-floor player may help you win now; a younger one builds long-term value.`,links:getLinks('waiver')};
+     }
+     return{text:`Head to the Week tab to see trending free agents on Sleeper. For dynasty FA advice: prioritize youth and targets. Look for players whose depth chart situation just improved (starter injury, trade, etc.).`,links:getLinks('waiver')};
+   }},
+  {pat:/rookie|draft.*pick|pick.*draft|target.*rookie|rookie.*rank/i,topic:'rookies',
+   fn(q){
+     const needs=G.ld.needs||[];
+     const rookieNeeds=needs.filter(n=>['WR','RB','QB','TE'].includes(n.pos));
+     const targets=rookieNeeds.map(n=>{const dv=getDV(n.name);return`${n.name}(${n.pos}, value:${dv||'?'})`;}).join(', ');
+     return{text:`Your identified rookie/target needs: ${targets||'none listed'}\n\nDynasty rookie drafts are typically held after the NFL Draft in April/May. Key targets for your team's needs:\n- QB: Cam Ward (7000) — high upside\n- RB: Kaleb Johnson (6500) — volume back\n- WR: Tre Harris (6200), Jaylin Noel (5800)\n\nRookies take 1-2 years to develop. Target them in rounds 1-2 for long-term value.`,links:getLinks('rookies')};
+   }},
+  {pat:/trade|value|calculator|worth|trade.*for|should.*trade/i,topic:'trade',
+   fn(q){
+     const ctx=myRosterContext();
+     return{text:`For trade evaluation, I recommend the Trade tab in Dynasty HQ — it uses dynasty values to grade trades instantly.\n\nGeneral trade advice for ${OWNER_USERNAME}:\n- Your team has strong WR depth (Rashee Rice at 8600 is your crown jewel)\n- You need TE depth (David Njoku, Tucker Kraft are targets)\n- Expiring contracts (2026) may be trade candidates if you're rebuilding\n\nAlways use KTC values as a reference, but also factor in age, scheme fit, and injury history.`,links:getLinks('trade')};
+   }},
+  {pat:/contract|slot|year|extension|franchise/i,topic:'contract',
+   fn(q){
+     const ld=G.ld;
+     const inv=ld.inventory||{};
+     const alloc=ld.allocations||{};
+     const used={};
+     Object.values(alloc).forEach(v=>{used[v]=(used[v]||0)+1;});
+     const summary=Object.keys(inv).map(k=>`${k}: ${used[k]||0}/${inv[k]} used`).join(', ');
+     const deadline=ld.deadline;
+     return{text:`Your contract slot usage: ${summary}\nDeadline: ${deadline||'not set'}\n\nIn dynasty contract leagues, longer contracts lock in players' values — great for young stars (Rashee Rice on a 3yr is smart). Use shorter 1yr slots for veterans or depth. Transfer slots are typically used when acquiring a player mid-contract via trade.`,links:getLinks('contract')};
+   }},
+  {pat:/roster|team|how.*doing|strength|weakness|overview|my team/i,topic:'strategy',
+   fn(q){
+     const ld=G.ld;
+     const active=ld.active||[];
+     const qbs=active.filter(c=>c.pos==='QB').map(c=>c.name);
+     const rbs=active.filter(c=>c.pos==='RB').map(c=>c.name);
+     const wrs=active.filter(c=>c.pos==='WR').map(c=>c.name);
+     const tes=active.filter(c=>c.pos==='TE').map(c=>c.name);
+     const totalDV=active.reduce((s,c)=>s+getDV(c.name),0);
+     return{text:`📊 ${OWNER_USERNAME} Roster Overview:\n\nQBs: ${qbs.join(', ')||'none'}\nRBs: ${rbs.join(', ')||'none'}\nWRs: ${wrs.join(', ')||'none'}\nTEs: ${tes.join(', ')||'none'}\n\nEstimated total value: ${totalDV}\nStrengths: WR (Rashee Rice is elite), QB young core\nWeaknesses: TE depth (David Njoku, Tucker Kraft on your needs list)\n\nMost contracts expire in 2026 — you'll want to address that at the deadline.`,links:getLinks('strategy')};
+   }},
+  {pat:/dynasty.*football|what is dynasty|how.*dynasty.*work|explain dynasty|new.*dynasty|beginner/i,topic:'strategy',
+   fn(q){
+     return{text:`🏈 Dynasty Football Explained (Beginner Guide):\n\nDynasty is like a real NFL team — you keep your players year after year, draft rookies, and trade to build for the long haul.\n\nKey concepts:\n1. You keep ALL your players (no re-drafting each year)\n2. Rookie drafts replace the annual player draft\n3. Dynasty value = combination of current skill + age + contract years\n4. Young players (22-25) have higher value than old vets\n5. Contracts limit how many years you can assign to each player\n6. Rebuilding vs. contending: decide your window!\n\nYour team is competitive NOW with Rashee Rice and Joe Burrow — but many contracts expire in 2026, so decisions are coming!`,links:getLinks('strategy')};
+   }},
+];
+
+function ruleBasedAnswer(q){
+  for(const faq of DYNASTY_FAQ){
+    if(faq.pat.test(q))return faq.fn(q);
+  }
+  // general fallback
+  const ctx=myRosterContext();
+  return{text:`I don't have a specific answer for that question yet. Here are some resources that might help. Your team context: ${OWNER_USERNAME} has ${(G.ld.active||[]).length} active contracts and ${(G.ld.needs||[]).length} listed needs.`,links:getLinks('general')};
+}
+
+function appendMsg(role,txt,thinking=false,links=[]){
+  const wrap=document.getElementById('ask-msgs');
+  const div=document.createElement('div');
+  div.className='chat-msg '+(thinking?'thinking':role);
+  let html=`<div class="chat-bubble">${txt.replace(/\n/g,'<br>')}</div>`;
+  if(links&&links.length){
+    html+=`<div class="link-cards">${links.map(l=>`<a class="link-card" href="${l.url}" target="_blank" rel="noopener">🔗 ${l.label}</a>`).join('')}</div>`;
+  }
+  div.innerHTML=html;
+  wrap.appendChild(div);
+  div.scrollIntoView({behavior:'smooth'});
+  return div;
+}
+
+function quickAsk(q){
+  document.getElementById('ask-q').value=q;
+  sendAsk();
+}
+
+async function sendAsk(){
+  const inp=document.getElementById('ask-q');
+  const q=inp.value.trim(); if(!q)return;
+  inp.value='';
+  appendMsg('user',q);
+  const provider=document.getElementById('ai-provider').value;
+  const thinkingEl=appendMsg('assistant','<span class="spinner"></span>',true);
+
+  try{
+    if(provider==='groq'){
+      const key=load('dhq_key','');
+      if(!key){thinkingEl.remove();appendMsg('assistant','Please enter your Groq API key in the settings area below.');return;}
+      await groqAnswer(q,thinkingEl);
+    } else {
+      // rule-based
+      await new Promise(r=>setTimeout(r,400));
+      const {text,links}=ruleBasedAnswer(q);
+      thinkingEl.remove();
+      appendMsg('assistant',text,false,links);
+    }
+  }catch(e){
+    thinkingEl.remove();
+    appendMsg('assistant','Error: '+e.message+'. Falling back to built-in answer.');
+    const {text,links}=ruleBasedAnswer(q);
+    appendMsg('assistant',text,false,links);
+  }
+}
+
+async function groqAnswer(q,thinkingEl){
+  const key=load('dhq_key','');
+  const ctx=myRosterContext();
+  const systemPrompt=`You are a dynasty fantasy football assistant for ${OWNER_USERNAME}. Be concise and helpful. Roster context: ${ctx}`;
+  const res=await fetch('https://api.groq.com/openai/v1/chat/completions',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+    body:JSON.stringify({
+      model:'llama-3.3-70b-versatile',
+      messages:[{role:'system',content:systemPrompt},{role:'user',content:q}],
+      stream:true,max_tokens:800
+    })
+  });
+  if(!res.ok){const t=await res.text();throw new Error('Groq: '+t.slice(0,100));}
+  thinkingEl.remove();
+  const msgEl=appendMsg('assistant','');
+  const bubble=msgEl.querySelector('.chat-bubble');
+  let full='';
+  const reader=res.body.getReader();const dec=new TextDecoder();
+  while(true){
+    const {done,value}=await reader.read(); if(done)break;
+    const chunk=dec.decode(value);
+    chunk.split('\n').forEach(line=>{
+      if(!line.startsWith('data:'))return;
+      const d=line.slice(5).trim(); if(d==='[DONE]')return;
+      try{const j=JSON.parse(d);const t=j.choices?.[0]?.delta?.content||'';full+=t;bubble.innerHTML=full.replace(/\n/g,'<br>');}catch{}
+    });
+    bubble.scrollIntoView({behavior:'smooth'});
+  }
+  // add relevant links based on question
+  const {links}=ruleBasedAnswer(q);
+  if(links&&links.length){
+    const lc=document.createElement('div');
+    lc.className='link-cards';
+    lc.innerHTML=links.map(l=>`<a class="link-card" href="${l.url}" target="_blank" rel="noopener">🔗 ${l.label}</a>`).join('');
+    msgEl.appendChild(lc);
+  }
+}
+
+function onProviderChange(){
+  const p=document.getElementById('ai-provider').value;
+  save('dhq_provider',p);
+  document.getElementById('ai-key').style.display=p==='rule'?'none':'block';
+  document.getElementById('ai-key').placeholder=p==='groq'?'Groq API key (free at groq.com)':'API key';
+}
+function saveKey(){save('dhq_key',document.getElementById('ai-key').value);}
+</script>
+</body>
+</html>
